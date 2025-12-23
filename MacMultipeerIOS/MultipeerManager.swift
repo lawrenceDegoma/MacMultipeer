@@ -1,7 +1,14 @@
+#if os(iOS)
+import UIKit
+typealias PlatformImage = UIImage
+#else
+import AppKit
+typealias PlatformImage = NSImage
+#endif
+
 import Foundation
 import MultipeerConnectivity
 import Combine
-import AppKit
 
 enum DeviceCapability: String, CaseIterable, Codable {
     case canSendScreen = "screen_sender"
@@ -49,7 +56,14 @@ class Peer: Identifiable {
 
 class MultipeerManager: NSObject, ObservableObject {
     private let serviceType = "screenshare"
-    private let myPeerId = MCPeerID(displayName: Host.current().localizedName ?? "mac")
+    private let myPeerId: MCPeerID = {
+        #if os(macOS)
+        return MCPeerID(displayName: Host.current().localizedName ?? "mac")
+        #else
+        return MCPeerID(displayName: UIDevice.current.name)
+        #endif
+    }()
+
     private var advertiser: MCNearbyServiceAdvertiser?
     private var browser: MCNearbyServiceBrowser?
     private var session: MCSession!
@@ -57,7 +71,7 @@ class MultipeerManager: NSObject, ObservableObject {
     @Published var peers: [Peer] = []
     @Published var isAdvertising = false
     @Published var isBrowsing = false
-    @Published var lastImage: NSImage? = nil
+    @Published var lastImage: PlatformImage? = nil
     @Published var currentSender: Peer? = nil // Track who's currently sending
     @Published var isController = false // Whether this device acts as controller
 
@@ -67,16 +81,29 @@ class MultipeerManager: NSObject, ObservableObject {
     // Public access to session for debugging
     var sessionForDebug: MCSession { session }
 
-    // Device capabilities for this Mac
-    private let myDeviceInfo = DeviceInfo(
-        peerId: "",
-        deviceType: .mac,
-        capabilities: [.canSendScreen, .canReceiveScreen, .canControlInputs],
-        isCurrentlySending: false
-    )
+    // Device capabilities
+    private let myDeviceInfo: DeviceInfo = {
+        #if os(macOS)
+        return DeviceInfo(
+            peerId: "",
+            deviceType: .mac,
+            capabilities: [.canSendScreen, .canReceiveScreen, .canControlInputs],
+            isCurrentlySending: false
+        )
+        #else
+        let deviceType: DeviceType = UIDevice.current.userInterfaceIdiom == .pad ? .iPad : .iPhone
+        return DeviceInfo(
+            peerId: "",
+            deviceType: deviceType,
+            capabilities: [.canSendScreen, .canReceiveScreen, .canControlInputs],
+            isCurrentlySending: false
+        )
+        #endif
+    }()
 
-    // make captureSender internal so UI can access it
-    var captureSender: MacCaptureSender?
+    #if os(macOS)
+    var captureSender: CaptureSender?
+    #endif
     
     // Debug counter for frame transmission
     private var debugFrameCounter: Int = 0
@@ -155,23 +182,34 @@ class MultipeerManager: NSObject, ObservableObject {
         switch message.command {
         case .startSending:
             if message.targetPeerId == myPeerId.displayName || message.targetPeerId == nil {
+                #if os(macOS)
                 // Add a small delay to allow connection to stabilize
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     self.startSending()
                 }
+                #else
+                // iOS screen sharing would need additional implementation
+                print("[iOS] Screen sharing not implemented yet")
+                #endif
             }
         case .stopSending:
             if message.targetPeerId == myPeerId.displayName || message.targetPeerId == nil {
+                #if os(macOS)
                 stopSending()
+                #endif
             }
         case .switchToSender:
             if message.targetPeerId == myPeerId.displayName {
+                #if os(macOS)
                 // Add a small delay to allow connection to stabilize
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     self.startSending()
                 }
+                #endif
             } else {
+                #if os(macOS)
                 stopSending()
+                #endif
             }
         }
     }
@@ -197,7 +235,13 @@ class MultipeerManager: NSObject, ObservableObject {
             peerId: myPeerId.displayName,
             deviceType: deviceInfo.deviceType,
             capabilities: deviceInfo.capabilities,
-            isCurrentlySending: captureSender != nil
+            isCurrentlySending: {
+                #if os(macOS)
+                return captureSender != nil
+                #else
+                return false // iOS implementation needed
+                #endif
+            }()
         )
         
         do {
@@ -210,10 +254,11 @@ class MultipeerManager: NSObject, ObservableObject {
         }
     }
 
+    #if os(macOS)
     func startSending() {
         // start capture and forward frames via sendFrame closure
         guard captureSender == nil else { return }
-        captureSender = MacCaptureSender(onFrame: { [weak self] data in
+        captureSender = CaptureSender(onFrame: { [weak self] data in
             self?.sendFrame(data)
         })
         captureSender?.start()
@@ -227,7 +272,6 @@ class MultipeerManager: NSObject, ObservableObject {
         
         // Broadcast updated device info
         broadcastDeviceInfo()
-        print("[Multipeer] startSending: capture started")
     }
 
     func stopSending() {
@@ -243,15 +287,11 @@ class MultipeerManager: NSObject, ObservableObject {
         
         // Broadcast updated device info
         broadcastDeviceInfo()
-        print("[Multipeer] stopSending: capture stopped")
     }
+    #endif
 
     private func sendFrame(_ data: Data) {
-        let peersCount = session.connectedPeers.count
-        guard peersCount > 0 else {
-            // no connected peers
-            return
-        }
+        guard session.connectedPeers.count > 0 else { return }
         
         // Double-check connection state before sending and verify each peer individually
         let connectedPeers = session.connectedPeers
@@ -262,7 +302,7 @@ class MultipeerManager: NSObject, ObservableObject {
         // Check if session is actually ready for data transmission
         guard connectedPeers.allSatisfy({ session.connectedPeers.contains($0) }) else {
             if debugFrameCounter % 50 == 0 {
-                print("[Multipeer] Skipping frame - not all peers are stably connected")
+                print("Skipping frame - not all peers are stably connected")
             }
             debugFrameCounter += 1
             return
@@ -270,15 +310,14 @@ class MultipeerManager: NSObject, ObservableObject {
         
         DispatchQueue.global(qos: .userInitiated).async {
             do {
-                // Use unreliable transmission for frame data to reduce protocol overhead
                 try self.session.send(data, toPeers: connectedPeers, with: .unreliable)
                 // Only log occasionally to reduce console spam
                 if self.debugFrameCounter % 10 == 0 {
-                    print("Frame sent via unreliable transport to \(peersCount) peers")
+                    print("Frame sent via unreliable transport to \(connectedPeers.count) peers")
                 }
                 self.debugFrameCounter += 1
             } catch {
-                print("[Multipeer] Failed to send frame:", error)
+                print("Failed to send frame:", error)
             }
         }
     }
@@ -288,7 +327,6 @@ class MultipeerManager: NSObject, ObservableObject {
             advertiser?.stopAdvertisingPeer()
             advertiser = nil
             isAdvertising = false
-            print("[Multipeer] Stopped advertising")
         } else {
             // Include device capabilities in discovery info
             let discoveryInfo = [
@@ -299,7 +337,6 @@ class MultipeerManager: NSObject, ObservableObject {
             advertiser?.delegate = self
             advertiser?.startAdvertisingPeer()
             isAdvertising = true
-            print("[Multipeer] Started advertising with serviceType=\(serviceType) peer=\(myPeerId.displayName)")
         }
     }
 
@@ -308,13 +345,11 @@ class MultipeerManager: NSObject, ObservableObject {
             browser?.stopBrowsingForPeers()
             browser = nil
             isBrowsing = false
-            print("[Multipeer] Stopped browsing")
         } else {
             browser = MCNearbyServiceBrowser(peer: myPeerId, serviceType: serviceType)
             browser?.delegate = self
             browser?.startBrowsingForPeers()
             isBrowsing = true
-            print("[Multipeer] Started browsing for serviceType=\(serviceType) peer=\(myPeerId.displayName)")
         }
     }
 
@@ -397,7 +432,7 @@ extension MultipeerManager: MCNearbyServiceAdvertiserDelegate {
             invitationHandler(true, self.session)
         }
     }
-
+    
     func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didNotStartAdvertisingPeer error: Error) {
         print("[Multipeer] advertiser didNotStartAdvertisingPeer error:\(error)")
     }
@@ -432,13 +467,8 @@ extension MultipeerManager: MCNearbyServiceBrowserDelegate {
 
     func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {
         DispatchQueue.main.async {
-            print("[Multipeer] lostPeer: \(peerID.displayName)")
             self.peers.removeAll { $0.peer == peerID }
         }
-    }
-
-    func browser(_ browser: MCNearbyServiceBrowser, didNotSearch error: Error) {
-        print("[Multipeer] browser didNotSearch error:\(error)")
     }
 }
 
@@ -517,10 +547,15 @@ extension MultipeerManager: MCSessionDelegate {
         
         // handle incoming frame data
         DispatchQueue.main.async {
-            print("[Multipeer] didReceive frame from \(peerID.displayName); size=\(data.count)")
+            #if os(iOS)
+            if let img = UIImage(data: data) {
+                self.lastImage = img
+            }
+            #else
             if let img = NSImage(data: data) {
                 self.lastImage = img
             }
+            #endif
         }
     }
 

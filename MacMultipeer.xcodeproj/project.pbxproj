@@ -21,17 +21,54 @@
 			remoteGlobalIDString = 2116BA032E8E00CD00CEB22E;
 			remoteInfo = MacMultipeer;
 		};
+		21383CF32E8F479200099915 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2116B9FC2E8E00CD00CEB22E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 21383CE32E8F479200099915;
+			remoteInfo = MacMultipeerIOS;
+		};
+		21383CFD2E8F479200099915 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2116B9FC2E8E00CD00CEB22E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 21383CE32E8F479200099915;
+			remoteInfo = MacMultipeerIOS;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		2116BA042E8E00CD00CEB22E /* MacMultipeer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMultipeer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2116BA132E8E00CE00CEB22E /* MacMultipeerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacMultipeerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2116BA1D2E8E00CE00CEB22E /* MacMultipeerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacMultipeerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		21383CE42E8F479200099915 /* MacMultipeerIOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMultipeerIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		21383CF22E8F479200099915 /* MacMultipeerIOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacMultipeerIOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		21383CFC2E8F479200099915 /* MacMultipeerIOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MacMultipeerIOSUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		21383D0F2E8F4A7B00099915 /* Exceptions for "MacMultipeer" folder in "MacMultipeer" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 2116BA032E8E00CD00CEB22E /* MacMultipeer */;
+		};
+		21383D1A2E8F529900099915 /* Exceptions for "MacMultipeerIOS" folder in "MacMultipeerIOS" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 21383CE32E8F479200099915 /* MacMultipeerIOS */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		2116BA062E8E00CD00CEB22E /* MacMultipeer */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				21383D0F2E8F4A7B00099915 /* Exceptions for "MacMultipeer" folder in "MacMultipeer" target */,
+			);
 			path = MacMultipeer;
 			sourceTree = "<group>";
 		};
@@ -43,6 +80,24 @@
 		2116BA202E8E00CE00CEB22E /* MacMultipeerUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = MacMultipeerUITests;
+			sourceTree = "<group>";
+		};
+		21383CE52E8F479200099915 /* MacMultipeerIOS */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				21383D1A2E8F529900099915 /* Exceptions for "MacMultipeerIOS" folder in "MacMultipeerIOS" target */,
+			);
+			path = MacMultipeerIOS;
+			sourceTree = "<group>";
+		};
+		21383CF52E8F479200099915 /* MacMultipeerIOSTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = MacMultipeerIOSTests;
+			sourceTree = "<group>";
+		};
+		21383CFF2E8F479200099915 /* MacMultipeerIOSUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = MacMultipeerIOSUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -69,6 +124,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		21383CE12E8F479200099915 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		21383CEF2E8F479200099915 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		21383CF92E8F479200099915 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -78,6 +154,9 @@
 				2116BA062E8E00CD00CEB22E /* MacMultipeer */,
 				2116BA162E8E00CE00CEB22E /* MacMultipeerTests */,
 				2116BA202E8E00CE00CEB22E /* MacMultipeerUITests */,
+				21383CE52E8F479200099915 /* MacMultipeerIOS */,
+				21383CF52E8F479200099915 /* MacMultipeerIOSTests */,
+				21383CFF2E8F479200099915 /* MacMultipeerIOSUITests */,
 				2116BA052E8E00CD00CEB22E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -88,6 +167,9 @@
 				2116BA042E8E00CD00CEB22E /* MacMultipeer.app */,
 				2116BA132E8E00CE00CEB22E /* MacMultipeerTests.xctest */,
 				2116BA1D2E8E00CE00CEB22E /* MacMultipeerUITests.xctest */,
+				21383CE42E8F479200099915 /* MacMultipeerIOS.app */,
+				21383CF22E8F479200099915 /* MacMultipeerIOSTests.xctest */,
+				21383CFC2E8F479200099915 /* MacMultipeerIOSUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -163,6 +245,74 @@
 			productReference = 2116BA1D2E8E00CE00CEB22E /* MacMultipeerUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		21383CE32E8F479200099915 /* MacMultipeerIOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 21383D042E8F479200099915 /* Build configuration list for PBXNativeTarget "MacMultipeerIOS" */;
+			buildPhases = (
+				21383CE02E8F479200099915 /* Sources */,
+				21383CE12E8F479200099915 /* Frameworks */,
+				21383CE22E8F479200099915 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				21383CE52E8F479200099915 /* MacMultipeerIOS */,
+			);
+			name = MacMultipeerIOS;
+			packageProductDependencies = (
+			);
+			productName = MacMultipeerIOS;
+			productReference = 21383CE42E8F479200099915 /* MacMultipeerIOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		21383CF12E8F479200099915 /* MacMultipeerIOSTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 21383D072E8F479200099915 /* Build configuration list for PBXNativeTarget "MacMultipeerIOSTests" */;
+			buildPhases = (
+				21383CEE2E8F479200099915 /* Sources */,
+				21383CEF2E8F479200099915 /* Frameworks */,
+				21383CF02E8F479200099915 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				21383CF42E8F479200099915 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				21383CF52E8F479200099915 /* MacMultipeerIOSTests */,
+			);
+			name = MacMultipeerIOSTests;
+			packageProductDependencies = (
+			);
+			productName = MacMultipeerIOSTests;
+			productReference = 21383CF22E8F479200099915 /* MacMultipeerIOSTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		21383CFB2E8F479200099915 /* MacMultipeerIOSUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 21383D0A2E8F479200099915 /* Build configuration list for PBXNativeTarget "MacMultipeerIOSUITests" */;
+			buildPhases = (
+				21383CF82E8F479200099915 /* Sources */,
+				21383CF92E8F479200099915 /* Frameworks */,
+				21383CFA2E8F479200099915 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				21383CFE2E8F479200099915 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				21383CFF2E8F479200099915 /* MacMultipeerIOSUITests */,
+			);
+			name = MacMultipeerIOSUITests;
+			packageProductDependencies = (
+			);
+			productName = MacMultipeerIOSUITests;
+			productReference = 21383CFC2E8F479200099915 /* MacMultipeerIOSUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -184,6 +334,17 @@
 						CreatedOnToolsVersion = 26.0;
 						TestTargetID = 2116BA032E8E00CD00CEB22E;
 					};
+					21383CE32E8F479200099915 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					21383CF12E8F479200099915 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = 21383CE32E8F479200099915;
+					};
+					21383CFB2E8F479200099915 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = 21383CE32E8F479200099915;
+					};
 				};
 			};
 			buildConfigurationList = 2116B9FF2E8E00CD00CEB22E /* Build configuration list for PBXProject "MacMultipeer" */;
@@ -203,6 +364,9 @@
 				2116BA032E8E00CD00CEB22E /* MacMultipeer */,
 				2116BA122E8E00CE00CEB22E /* MacMultipeerTests */,
 				2116BA1C2E8E00CE00CEB22E /* MacMultipeerUITests */,
+				21383CE32E8F479200099915 /* MacMultipeerIOS */,
+				21383CF12E8F479200099915 /* MacMultipeerIOSTests */,
+				21383CFB2E8F479200099915 /* MacMultipeerIOSUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -223,6 +387,27 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		2116BA1B2E8E00CE00CEB22E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		21383CE22E8F479200099915 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		21383CF02E8F479200099915 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		21383CFA2E8F479200099915 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -253,6 +438,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		21383CE02E8F479200099915 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		21383CEE2E8F479200099915 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		21383CF82E8F479200099915 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -265,6 +471,16 @@
 			isa = PBXTargetDependency;
 			target = 2116BA032E8E00CD00CEB22E /* MacMultipeer */;
 			targetProxy = 2116BA1E2E8E00CE00CEB22E /* PBXContainerItemProxy */;
+		};
+		21383CF42E8F479200099915 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 21383CE32E8F479200099915 /* MacMultipeerIOS */;
+			targetProxy = 21383CF32E8F479200099915 /* PBXContainerItemProxy */;
+		};
+		21383CFE2E8F479200099915 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 21383CE32E8F479200099915 /* MacMultipeerIOS */;
+			targetProxy = 21383CFD2E8F479200099915 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -390,14 +606,26 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = Q75286H956;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = YES;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = Yes;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -408,7 +636,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.3;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
@@ -434,14 +662,26 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = Q75286H956;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = YES;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = Yes;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -452,7 +692,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.3;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
@@ -575,6 +815,173 @@
 			};
 			name = Release;
 		};
+		21383D052E8F479200099915 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Q75286H956;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MacMultipeerIOS/Info.plist;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = Yes;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.3;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = DegomaDevs.MacMultipeer.MacMultipeerIOs;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRINGS_FILE_INFOPLIST_RENAME = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		21383D062E8F479200099915 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Q75286H956;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MacMultipeerIOS/Info.plist;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = Yes;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.3;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = DegomaDevs.MacMultipeer.MacMultipeerIOs;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRINGS_FILE_INFOPLIST_RENAME = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		21383D082E8F479200099915 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Q75286H956;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = DegomaDev.MacMultipeer.MacMultipeerIOSTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MacMultipeerIOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MacMultipeerIOS";
+			};
+			name = Debug;
+		};
+		21383D092E8F479200099915 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Q75286H956;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = DegomaDev.MacMultipeer.MacMultipeerIOSTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MacMultipeerIOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MacMultipeerIOS";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		21383D0B2E8F479200099915 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Q75286H956;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = DegomaDev.MacMultipeer.MacMultipeerIOSUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = MacMultipeerIOS;
+			};
+			name = Debug;
+		};
+		21383D0C2E8F479200099915 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Q75286H956;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = DegomaDev.MacMultipeer.MacMultipeerIOSUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = MacMultipeerIOS;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -610,6 +1017,33 @@
 			buildConfigurations = (
 				2116BA2E2E8E00CE00CEB22E /* Debug */,
 				2116BA2F2E8E00CE00CEB22E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		21383D042E8F479200099915 /* Build configuration list for PBXNativeTarget "MacMultipeerIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				21383D052E8F479200099915 /* Debug */,
+				21383D062E8F479200099915 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		21383D072E8F479200099915 /* Build configuration list for PBXNativeTarget "MacMultipeerIOSTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				21383D082E8F479200099915 /* Debug */,
+				21383D092E8F479200099915 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		21383D0A2E8F479200099915 /* Build configuration list for PBXNativeTarget "MacMultipeerIOSUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				21383D0B2E8F479200099915 /* Debug */,
+				21383D0C2E8F479200099915 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

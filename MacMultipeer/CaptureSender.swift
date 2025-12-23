@@ -1,9 +1,10 @@
+#if os(macOS)
 import Foundation
 import AVFoundation
 import AppKit
 import CoreImage
 
-class CaptureSender: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+class MacCaptureSender: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     private let displayId: CGDirectDisplayID = CGMainDisplayID()
     private let onFrame: (Data) -> Void
     private let minInterval: TimeInterval
@@ -74,3 +75,4 @@ class CaptureSender: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         }
     }
 }
+#endif
