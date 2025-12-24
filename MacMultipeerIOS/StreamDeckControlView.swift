@@ -37,6 +37,38 @@ struct StreamDeckControlView: View {
                     Spacer()
                 }
                 
+                // Connection Test Section
+                if !manager.peers.filter({ $0.state == .connected }).isEmpty {
+                    VStack(spacing: 8) {
+                        Text("🧪 Connection Tests")
+                            .font(.headline)
+                            .foregroundColor(.blue)
+                        
+                        HStack(spacing: 12) {
+                            Button("💬 Send Test Message") {
+                                sendTestMessage()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .font(.caption)
+                            
+                            Button("📋 Request Device Info") {
+                                manager.sendDeviceInfo()
+                            }
+                            .buttonStyle(.bordered)
+                            .font(.caption)
+                        }
+                        
+                        Button("🎯 Test Control Command") {
+                            sendTestControlCommand()
+                        }
+                        .buttonStyle(.bordered)
+                        .font(.caption)
+                    }
+                    .padding()
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                
                 // Device Grid
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: buttonSpacing), count: 3), spacing: buttonSpacing) {
                     ForEach(availableInputSources, id: \.id) { peer in
@@ -188,6 +220,16 @@ struct StreamDeckControlView: View {
             return false // iOS screen sharing not implemented yet
         }
         return manager.currentSender?.peer.displayName == peer.peer.displayName
+    }
+    
+    // MARK: - Test Functions
+    private func sendTestMessage() {
+        let testData = "TEST_MESSAGE:Hello from iOS at \(Date())".data(using: .utf8)!
+        manager.sendTestMessage(testData)
+    }
+    
+    private func sendTestControlCommand() {
+        manager.sendTestControl()
     }
 }
 

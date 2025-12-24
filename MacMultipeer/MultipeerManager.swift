@@ -3,6 +3,8 @@ import MultipeerConnectivity
 import Combine
 import AppKit
 
+// MARK: - Models and Enums
+
 enum DeviceCapability: String, CaseIterable, Codable {
     case canSendScreen = "screen_sender"
     case canReceiveScreen = "screen_receiver" 
@@ -47,27 +49,35 @@ class Peer: Identifiable {
     }
 }
 
+// MARK: - Main MultipeerManager
+
 class MultipeerManager: NSObject, ObservableObject {
+    // MARK: - Configuration
     private let serviceType = "screenshare"
     private let myPeerId = MCPeerID(displayName: Host.current().localizedName ?? "mac")
-    private var advertiser: MCNearbyServiceAdvertiser?
-    private var browser: MCNearbyServiceBrowser?
-    private var session: MCSession!
-
+    
+    // MARK: - Published Properties
     @Published var peers: [Peer] = []
     @Published var isAdvertising = false
     @Published var isBrowsing = false
     @Published var lastImage: NSImage? = nil
     @Published var currentSender: Peer? = nil // Track who's currently sending
     @Published var isController = false // Whether this device acts as controller
-
-    // Public access to peer ID
-    var myPeerID: MCPeerID { myPeerId }
     
-    // Public access to session for debugging
-    var sessionForDebug: MCSession { session }
+    // Connection stability flags
+    private var isBroadcasting = false // Prevent multiple simultaneous broadcasts
 
-    // Device capabilities for this Mac
+    // MARK: - Networking Components
+    private var advertiser: MCNearbyServiceAdvertiser?
+    private var browser: MCNearbyServiceBrowser?
+    private var session: MCSession!
+
+    // MARK: - Device & Capture
+    var captureSender: MacCaptureSender?
+    var airPlayManager: AirPlayManager = AirPlayManager()
+    private var debugFrameCounter: Int = 0
+
+    // MARK: - Device Configuration
     private let myDeviceInfo = DeviceInfo(
         peerId: "",
         deviceType: .mac,
@@ -75,22 +85,18 @@ class MultipeerManager: NSObject, ObservableObject {
         isCurrentlySending: false
     )
 
-    // make captureSender internal so UI can access it
-    var captureSender: MacCaptureSender?
-    
-    // AirPlay manager for Apple TV output
-    var airPlayManager: AirPlayManager = AirPlayManager()
-    
-    // Debug counter for frame transmission
-    private var debugFrameCounter: Int = 0
+    // MARK: - Public API Properties
+    var myPeerID: MCPeerID { myPeerId }
+    var sessionForDebug: MCSession { session }
 
+    // MARK: - Initialization
     override init() {
         super.init()
         session = MCSession(peer: myPeerId, securityIdentity: nil, encryptionPreference: .required)
         session.delegate = self
     }
 
-    // MARK: - StreamDeck-like Control Functions
+    // MARK: - StreamDeck Controller Functions
     
     func enableControllerMode() {
         isController = true
@@ -125,6 +131,8 @@ class MultipeerManager: NSObject, ObservableObject {
         
         print("[Controller] Switching input to \(peer.displayName)")
     }
+    
+    // MARK: - Control Message Handling
     
     private func sendControlCommand(_ command: ControlCommand, to peer: Peer) {
         guard peer.state == .connected else {
@@ -179,21 +187,24 @@ class MultipeerManager: NSObject, ObservableObject {
         }
     }
     
+    // MARK: - Device Information Broadcasting
+    
     private func broadcastDeviceInfo() {
         guard !session.connectedPeers.isEmpty else {
             print("[DeviceInfo] No connected peers to broadcast to")
             return
         }
         
-        // Double-check that peers are actually connected
-        let actuallyConnectedPeers = session.connectedPeers.filter { peer in
-            session.connectedPeers.contains(peer)
-        }
+        // Triple-check that peers are actually connected and session is stable
+        let actuallyConnectedPeers = session.connectedPeers
         
         guard !actuallyConnectedPeers.isEmpty else {
             print("[DeviceInfo] No actually connected peers")
             return
         }
+        
+        // Wait a bit more to ensure the session channels are fully established
+        print("[DeviceInfo] Waiting for channels to stabilize before broadcasting...")
         
         var deviceInfo = myDeviceInfo
         deviceInfo = DeviceInfo(
@@ -206,13 +217,42 @@ class MultipeerManager: NSObject, ObservableObject {
         do {
             let data = try JSONEncoder().encode(deviceInfo)
             let dataWithType = "DEVICE_INFO:".data(using: .utf8)! + data
-            try session.send(dataWithType, toPeers: actuallyConnectedPeers, with: .unreliable)
-            print("[DeviceInfo] Broadcast successful to \(actuallyConnectedPeers.map { $0.displayName })")
+            
+            // Add even more delay to ensure channel stability and prevent overwhelming the connection
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                // Final check that connection is still stable
+                guard !self.session.connectedPeers.isEmpty else {
+                    print("[DeviceInfo] Connection no longer stable at broadcast time")
+                    return
+                }
+                
+                // Add a flag to prevent multiple simultaneous broadcasts
+                guard !self.isBroadcasting else {
+                    print("[DeviceInfo] Broadcast already in progress, skipping")
+                    return
+                }
+                
+                self.isBroadcasting = true
+                
+                do {
+                    try self.session.send(dataWithType, toPeers: self.session.connectedPeers, with: .reliable)
+                    print("[DeviceInfo] Broadcast successful to \(self.session.connectedPeers.map { $0.displayName })")
+                } catch {
+                    print("[DeviceInfo] Failed to broadcast (with channel stability check): \(error)")
+                }
+                
+                // Reset flag after a delay to allow future broadcasts
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    self.isBroadcasting = false
+                }
+            }
         } catch {
-            print("[DeviceInfo] Failed to broadcast: \(error)")
+            print("[DeviceInfo] Failed to encode device info: \(error)")
         }
     }
 
+    // MARK: - Screen Capture Management
+    
     func startSending() {
         // start capture and forward frames via sendFrame closure
         guard captureSender == nil else { return }
@@ -249,6 +289,8 @@ class MultipeerManager: NSObject, ObservableObject {
         print("[Multipeer] stopSending: capture stopped")
     }
 
+    // MARK: - Frame Data Transmission
+    
     private func sendFrame(_ data: Data) {
         let peersCount = session.connectedPeers.count
         guard peersCount > 0 else {
@@ -284,19 +326,34 @@ class MultipeerManager: NSObject, ObservableObject {
         }
         
         DispatchQueue.global(qos: .userInitiated).async {
+            // Double-check connection state before sending
+            let actuallyConnectedPeers = connectedPeers.filter { peer in
+                self.session.connectedPeers.contains(peer)
+            }
+            
+            guard !actuallyConnectedPeers.isEmpty else {
+                if self.debugFrameCounter % 100 == 0 { // Log less frequently
+                    print("[Frame] No connected peers, skipping frame")
+                }
+                self.debugFrameCounter += 1
+                return
+            }
+            
             do {
                 // Use unreliable transmission for frame data to reduce protocol overhead
-                try self.session.send(data, toPeers: connectedPeers, with: .unreliable)
+                try self.session.send(data, toPeers: actuallyConnectedPeers, with: .unreliable)
                 // Only log occasionally to reduce console spam
                 if self.debugFrameCounter % 10 == 0 {
-                    print("Frame sent via unreliable transport to \(peersCount) peers")
+                    print("Frame sent via unreliable transport to \(actuallyConnectedPeers.count) peers")
                 }
                 self.debugFrameCounter += 1
             } catch {
-                print("[Multipeer] Failed to send frame:", error)
+                print("[Multipeer] Failed to send frame to \(actuallyConnectedPeers.count) peers:", error)
             }
         }
     }
+
+    // MARK: - Network Session Management
 
     func toggleAdvertising() {
         if isAdvertising {
@@ -320,17 +377,27 @@ class MultipeerManager: NSObject, ObservableObject {
 
     func toggleBrowsing() {
         if isBrowsing {
-            browser?.stopBrowsingForPeers()
-            browser = nil
-            isBrowsing = false
-            print("[Multipeer] Stopped browsing")
+            stopBrowsing()
         } else {
-            browser = MCNearbyServiceBrowser(peer: myPeerId, serviceType: serviceType)
-            browser?.delegate = self
-            browser?.startBrowsingForPeers()
-            isBrowsing = true
-            print("[Multipeer] Started browsing for serviceType=\(serviceType) peer=\(myPeerId.displayName)")
+            startBrowsing()
         }
+    }
+    
+    func startBrowsing() {
+        guard !isBrowsing else { return }
+        browser = MCNearbyServiceBrowser(peer: myPeerId, serviceType: serviceType)
+        browser?.delegate = self
+        browser?.startBrowsingForPeers()
+        isBrowsing = true
+        print("[Multipeer] Started browsing for serviceType=\(serviceType) peer=\(myPeerId.displayName)")
+    }
+    
+    func stopBrowsing() {
+        guard isBrowsing else { return }
+        browser?.stopBrowsingForPeers()
+        browser = nil
+        isBrowsing = false
+        print("[Multipeer] Stopped browsing")
     }
 
     func invite(peer: Peer) {
@@ -355,6 +422,8 @@ class MultipeerManager: NSObject, ObservableObject {
         peer.state = .connecting
         browser.invitePeer(peer.peer, to: session, withContext: nil, timeout: 30)
     }
+    
+    // MARK: - Connection Management & Utility Functions
     
     func resetConnection() {
         print("[Multipeer] Resetting all connections...")
@@ -489,17 +558,43 @@ extension MultipeerManager: MCSessionDelegate {
             
             if state == .connected {
                 print("[Multipeer] ✅ Successfully connected to \(peerID.displayName)")
-                // Don't auto-broadcast device info immediately, let connection stabilize
+                // Auto-stop browsing when we have a connection to avoid interference
+                if self.isBrowsing {
+                    print("[Multipeer] Auto-stopping browsing after successful connection")
+                    self.stopBrowsing()
+                }
+                // Give connection significantly more time to stabilize before broadcasting device info
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    // Triple-check that the peer is still connected and session is stable
+                    guard session.connectedPeers.contains(peerID) && !session.connectedPeers.isEmpty else {
+                        print("[Multipeer] Connection no longer stable, skipping device info broadcast")
+                        return
+                    }
+                    print("[Multipeer] Connection stable, broadcasting device info after 2s delay")
+                    self.broadcastDeviceInfo()
+                }
             } else if state == .notConnected {
                 // Clear current sender if it was this peer
                 if self.currentSender?.peer == peerID {
                     self.currentSender = nil
+                }
+                // If we lost all connections, resume browsing
+                if session.connectedPeers.isEmpty && !self.isBrowsing {
+                    print("[Multipeer] No connected peers, resuming browsing")
+                    self.startBrowsing()
                 }
             }
         }
     }
 
     func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
+        // Check for test messages first
+        if let dataString = String(data: data, encoding: .utf8), dataString.hasPrefix("TEST_MESSAGE:") {
+            let message = String(dataString.dropFirst("TEST_MESSAGE:".count))
+            print("[Test] ✅ Received test message from \(peerID.displayName): \(message)")
+            return
+        }
+        
         // Check if this is a control message or device info
         if let dataString = String(data: data, encoding: .utf8), dataString.hasPrefix("DEVICE_INFO:") {
             let infoData = data.dropFirst("DEVICE_INFO:".count)

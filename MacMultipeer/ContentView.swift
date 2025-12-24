@@ -58,87 +58,60 @@ struct ContentView: View {
                 .foregroundColor(.blue)
             }
 
-            HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading) {
-                    Text("Discovered Peers")
-                        .font(.headline)
-                    List(manager.peers, id: \.id) { peer in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                // Device type indicator
-                                if let deviceInfo = peer.deviceInfo {
-                                    Text(deviceIcon(for: deviceInfo.deviceType))
-                                    VStack(alignment: .leading) {
-                                        Text(peer.displayName)
-                                            .fontWeight(.medium)
-                                        Text(deviceInfo.deviceType.rawValue)
+            VStack(alignment: .leading) {
+                Text("Discovered Peers")
+                    .font(.headline)
+                List(manager.peers, id: \.id) { peer in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            // Device type indicator
+                            if let deviceInfo = peer.deviceInfo {
+                                Text(deviceIcon(for: deviceInfo.deviceType))
+                                VStack(alignment: .leading) {
+                                    Text(peer.displayName)
+                                        .fontWeight(.medium)
+                                    Text(deviceInfo.deviceType.rawValue)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            } else {
+                                Text(peer.displayName)
+                            }
+                            
+                            Spacer()
+                            
+                            // Connection status and actions
+                            if peer.state == .connected {
+                                VStack(alignment: .trailing, spacing: 2) {
+                                    HStack {
+                                        if peer.isCurrentlySending {
+                                            Circle()
+                                                .fill(Color.red)
+                                                .frame(width: 8, height: 8)
+                                            Text("Sending")
+                                                .font(.caption2)
+                                        }
+                                        Text("Connected")
                                             .font(.caption)
+                                    }
+                                    .foregroundColor(.green)
+                                    
+                                    if let capabilities = peer.deviceInfo?.capabilities {
+                                        Text(capabilities.map { $0.rawValue }.joined(separator: ", "))
+                                            .font(.caption2)
                                             .foregroundColor(.secondary)
                                     }
-                                } else {
-                                    Text(peer.displayName)
                                 }
-                                
-                                Spacer()
-                                
-                                // Connection status and actions
-                                if peer.state == .connected {
-                                    VStack(alignment: .trailing, spacing: 2) {
-                                        HStack {
-                                            if peer.isCurrentlySending {
-                                                Circle()
-                                                    .fill(Color.red)
-                                                    .frame(width: 8, height: 8)
-                                                Text("Sending")
-                                                    .font(.caption2)
-                                            }
-                                            Text("Connected")
-                                                .font(.caption)
-                                        }
-                                        .foregroundColor(.green)
-                                        
-                                        if let capabilities = peer.deviceInfo?.capabilities {
-                                            Text(capabilities.map { $0.rawValue }.joined(separator: ", "))
-                                                .font(.caption2)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-                                } else {
-                                    Button("Connect") {
-                                        manager.invite(peer: peer)
-                                    }
+                            } else {
+                                Button("Connect") {
+                                    manager.invite(peer: peer)
                                 }
                             }
                         }
-                        .padding(.vertical, 2)
                     }
-                    .frame(width: 400, height: 300)
+                    .padding(.vertical, 2)
                 }
-
-                VStack {
-                    HStack {
-                        Text("Receiver")
-                            .font(.headline)
-                        Spacer()
-                        if let currentSender = manager.currentSender {
-                            Text("Source: \(currentSender.displayName)")
-                                .font(.caption)
-                                .foregroundColor(.blue)
-                        }
-                    }
-                    
-                    if let img = manager.lastImage {
-                        Image(nsImage: img)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 480, height: 320)
-                            .border(Color.black, width: 1)
-                    } else {
-                        Text("Waiting for frames...")
-                            .frame(width: 480, height: 320)
-                            .border(Color.black, width: 1)
-                    }
-                }
+                .frame(width: 600, height: 300)
             }
 
             Spacer()

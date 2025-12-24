@@ -2,8 +2,6 @@
 //  Item.swift
 //  MacMultipeer
 //
-//  Created by Lawrence Degoma on 10/1/25.
-//
 
 import Foundation
 import SwiftData

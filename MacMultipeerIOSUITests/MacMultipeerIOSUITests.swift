@@ -2,8 +2,6 @@
 //  MacMultipeerIOSUITests.swift
 //  MacMultipeerIOSUITests
 //
-//  Created by Lawrence Degoma on 10/2/25.
-//
 
 import XCTest
 

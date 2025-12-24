@@ -19,16 +19,9 @@ struct ContentView: View {
                     Image(systemName: "gear")
                     Text("Technical")
                 }
-                
-            // Receiver View Tab
-            receiverView
-                .tabItem {
-                    Image(systemName: "tv")
-                    Text("Receiver")
-                }
         }
         .onAppear {
-            print("App bundle path:", Bundle.main.bundleURL.path)
+            // Debug info for local network permissions
             let val = Bundle.main.object(forInfoDictionaryKey: "NSLocalNetworkUsageDescription") ?? "<missing>"
             print("NSLocalNetworkUsageDescription:", val)
             
@@ -69,6 +62,32 @@ struct ContentView: View {
                         manager.sendDeviceInfo()
                     }
                     .foregroundColor(.blue)
+                }
+                
+                // Connection Test Buttons
+                if !manager.peers.filter({ $0.state == .connected }).isEmpty {
+                    VStack(spacing: 8) {
+                        Text("🧪 Connection Tests")
+                            .font(.headline)
+                            .foregroundColor(.blue)
+                        
+                        HStack(spacing: 8) {
+                            Button("💬 Test Message") {
+                                sendTestMessage()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .font(.caption)
+                            
+                            Button("🎯 Test Control") {
+                                sendTestControl()
+                            }
+                            .buttonStyle(.bordered)
+                            .font(.caption)
+                        }
+                    }
+                    .padding()
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(8)
                 }
 
                 List(manager.peers, id: \.id) { peer in
@@ -130,37 +149,32 @@ struct ContentView: View {
         }
     }
     
-    private var receiverView: some View {
-        NavigationStack {
-            VStack(spacing: 12) {
-                HStack {
-                    Text("Receiver")
-                        .font(.headline)
-                    Spacer()
-                    if let currentSender = manager.currentSender {
-                        Text("Source: \(currentSender.displayName)")
-                            .font(.caption)
-                            .foregroundColor(.blue)
-                    }
-                }
-
-                if let img = manager.lastImage as? UIImage {
-                    Image(uiImage: img)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .border(Color.primary.opacity(0.2))
-                } else {
-                    Text("Waiting for frames...")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .border(Color.primary.opacity(0.2))
-                }
-
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("Screen Mirror")
+    
+    // MARK: - Test Functions
+    private func sendTestMessage() {
+        let testData = "TEST_MESSAGE:Hello from iOS at \(Date())".data(using: .utf8)!
+        let connectedPeers = manager.peers.filter { $0.state == MCSessionState.connected }
+        
+        guard !connectedPeers.isEmpty else {
+            print("[Test] No connected peers to send test message to")
+            return
         }
+        
+        // Use the manager's send method instead of accessing session directly
+        manager.sendTestMessage(testData)
+        print("[Test] ✅ Test message sent to \(connectedPeers.count) peers")
+    }
+    
+    private func sendTestControl() {
+        // Send a simple test control command via the manager
+        let connectedPeers = manager.peers.filter { $0.state == MCSessionState.connected }
+        guard !connectedPeers.isEmpty else {
+            print("[Test] No connected peers to send test control to")
+            return
+        }
+        
+        manager.sendTestControl()
+        print("[Test] ✅ Test control command sent to \(connectedPeers.count) peers")
     }
     
     private func deviceIcon(for deviceType: DeviceType) -> String {
