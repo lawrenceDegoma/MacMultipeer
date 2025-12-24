@@ -78,6 +78,9 @@ class MultipeerManager: NSObject, ObservableObject {
     // make captureSender internal so UI can access it
     var captureSender: MacCaptureSender?
     
+    // AirPlay manager for Apple TV output
+    var airPlayManager: AirPlayManager = AirPlayManager()
+    
     // Debug counter for frame transmission
     private var debugFrameCounter: Int = 0
 
@@ -249,13 +252,20 @@ class MultipeerManager: NSObject, ObservableObject {
     private func sendFrame(_ data: Data) {
         let peersCount = session.connectedPeers.count
         guard peersCount > 0 else {
-            // no connected peers
+            // no connected peers, but still forward to Apple TV if laptop is current sender
+            if currentSender?.peer.displayName == myPeerId.displayName {
+                airPlayManager.handleIncomingFrame(data, from: myPeerId.displayName)
+            }
             return
         }
         
         // Double-check connection state before sending and verify each peer individually
         let connectedPeers = session.connectedPeers
         guard !connectedPeers.isEmpty else {
+            // Still forward to Apple TV if laptop is current sender
+            if currentSender?.peer.displayName == myPeerId.displayName {
+                airPlayManager.handleIncomingFrame(data, from: myPeerId.displayName)
+            }
             return
         }
         
@@ -266,6 +276,11 @@ class MultipeerManager: NSObject, ObservableObject {
             }
             debugFrameCounter += 1
             return
+        }
+        
+        // Forward laptop screen to Apple TV if laptop is the current sender
+        if currentSender?.peer.displayName == myPeerId.displayName {
+            airPlayManager.handleIncomingFrame(data, from: myPeerId.displayName)
         }
         
         DispatchQueue.global(qos: .userInitiated).async {
@@ -518,9 +533,14 @@ extension MultipeerManager: MCSessionDelegate {
         // handle incoming frame data
         DispatchQueue.main.async {
             print("[Multipeer] didReceive frame from \(peerID.displayName); size=\(data.count)")
+            
+            // Store locally for preview (optional)
             if let img = NSImage(data: data) {
                 self.lastImage = img
             }
+            
+            // Forward to Apple TV via AirPlay
+            self.airPlayManager.handleIncomingFrame(data, from: peerID.displayName)
         }
     }
 

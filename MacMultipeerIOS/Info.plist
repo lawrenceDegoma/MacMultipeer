@@ -2,8 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>This app uses local networking to discover and connect to other devices for screen mirroring and control.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_screenshare._tcp</string>

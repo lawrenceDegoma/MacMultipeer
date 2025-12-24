@@ -9,6 +9,9 @@ struct StreamDeckControlView: View {
     
     var body: some View {
         VStack(spacing: 20) {
+            // Apple TV Control Section
+            AirPlayControlView(airPlayManager: manager.airPlayManager)
+            
             // Header
             HStack {
                 Text("🎮 Stream Control Deck")
