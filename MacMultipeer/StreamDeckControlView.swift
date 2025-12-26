@@ -14,7 +14,7 @@ struct StreamDeckControlView: View {
             
             // Header
             HStack {
-                Text("🎮 Stream Control Deck")
+                Text("Stream Control Deck")
                     .font(.title2)
                     .fontWeight(.bold)
                 
