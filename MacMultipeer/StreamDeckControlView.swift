@@ -1,5 +1,6 @@
 import SwiftUI
 import MultipeerConnectivity
+import AVKit
 
 struct StreamDeckControlView: View {
     @ObservedObject var manager: MultipeerManager
@@ -10,7 +11,7 @@ struct StreamDeckControlView: View {
     var body: some View {
         VStack(spacing: 20) {
             // Apple TV Control Section
-            AirPlayControlView(airPlayManager: manager.airPlayManager)
+            AirPlayControlPanel(airPlayManager: manager.airPlayManager)
             
             // Header
             HStack {

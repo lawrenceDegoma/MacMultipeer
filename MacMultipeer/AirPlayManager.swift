@@ -16,6 +16,13 @@ class AirPlayManager: NSObject, ObservableObject, NetServiceBrowserDelegate {
     private var discoveredServices: Set<NetService> = []
     private let browser = NWBrowser(for: .bonjourWithTXTRecord(type: "_airplay._tcp", domain: nil), using: .tcp)
     
+    // Streaming components
+    private var streamingPlayer: AVPlayer?
+    private var playerLayer: AVPlayerLayer?
+    private var routePickerView: AVRoutePickerView?
+    private var streamingWindow: NSWindow?
+    private var currentItem: AVPlayerItem?
+    
     struct AirPlayDevice: Identifiable, Hashable {
         let id = UUID()
         let name: String
@@ -192,6 +199,24 @@ class AirPlayManager: NSObject, ObservableObject, NetServiceBrowserDelegate {
     func selectDevice(_ device: AirPlayDevice) {
         selectedDevice = device
         print("[AirPlay] Selected device: \(device.name)")
+        setupStreamingForDevice(device)
+    }
+    
+    private func setupStreamingForDevice(_ device: AirPlayDevice) {
+        // Create a streaming setup for the selected device
+        setupAirPlayOutput()
+    }
+    
+    private func setupAirPlayOutput() {
+        // Create route picker for AirPlay device selection (macOS version)
+        routePickerView = AVRoutePickerView()
+        
+        // Create player for streaming
+        streamingPlayer = AVPlayer()
+        playerLayer = AVPlayerLayer(player: streamingPlayer)
+        playerLayer?.videoGravity = .resizeAspect
+        
+        print("[AirPlay] AirPlay output setup completed")
     }
     
     func startStreaming(with imageData: Data) {
@@ -200,46 +225,171 @@ class AirPlayManager: NSObject, ObservableObject, NetServiceBrowserDelegate {
             return
         }
         
+        print("[AirPlay] Starting stream to \(device.name)")
         currentImageData = imageData
         isStreaming = true
         
-        // Convert Data to NSImage for AirPlay
+        // Convert image data to streaming format
         if let image = NSImage(data: imageData) {
-            streamImageToAppleTV(image: image, device: device)
+            createStreamingContent(from: image)
         }
     }
     
+    private func createStreamingContent(from image: NSImage) {
+        // Create a temporary video file from the image for streaming
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            
+            let tempURL = self.createVideoFromImage(image)
+            
+            DispatchQueue.main.async {
+                self.playVideoContent(at: tempURL)
+            }
+        }
+    }
+    
+    private func createVideoFromImage(_ image: NSImage) -> URL {
+        // Create temporary video file
+        let tempDir = FileManager.default.temporaryDirectory
+        let videoURL = tempDir.appendingPathComponent("airplay_frame_\(Date().timeIntervalSince1970).mp4")
+        
+        // Convert NSImage to CGImage for video creation
+        guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            print("[AirPlay] Failed to convert NSImage to CGImage")
+            return videoURL
+        }
+        
+        createVideoFile(from: cgImage, outputURL: videoURL)
+        return videoURL
+    }
+    
+    private func createVideoFile(from cgImage: CGImage, outputURL: URL) {
+        // Create video writer
+        guard let videoWriter = try? AVAssetWriter(outputURL: outputURL, fileType: .mp4) else {
+            print("[AirPlay] Failed to create video writer")
+            return
+        }
+        
+        let videoSettings: [String: Any] = [
+            AVVideoCodecKey: AVVideoCodecType.h264,
+            AVVideoWidthKey: cgImage.width,
+            AVVideoHeightKey: cgImage.height,
+            AVVideoCompressionPropertiesKey: [
+                AVVideoAverageBitRateKey: 2_000_000,
+                AVVideoProfileLevelKey: AVVideoProfileLevelH264BaselineAutoLevel
+            ]
+        ]
+        
+        let videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
+        let pixelBufferAdaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: videoInput, sourcePixelBufferAttributes: nil)
+        
+        videoWriter.add(videoInput)
+        
+        if videoWriter.startWriting() {
+            videoWriter.startSession(atSourceTime: .zero)
+            
+            if let pixelBuffer = createPixelBuffer(from: cgImage, size: CGSize(width: cgImage.width, height: cgImage.height)) {
+                pixelBufferAdaptor.append(pixelBuffer, withPresentationTime: .zero)
+            }
+            
+            videoInput.markAsFinished()
+            videoWriter.finishWriting {
+                print("[AirPlay] Video file created successfully")
+            }
+        }
+    }
+    
+    private func createPixelBuffer(from cgImage: CGImage, size: CGSize) -> CVPixelBuffer? {
+        let attributes: [CFString: Any] = [
+            kCVPixelBufferCGImageCompatibilityKey: true,
+            kCVPixelBufferCGBitmapContextCompatibilityKey: true
+        ]
+        
+        var pixelBuffer: CVPixelBuffer?
+        let status = CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            Int(size.width),
+            Int(size.height),
+            kCVPixelFormatType_32ARGB,
+            attributes as CFDictionary,
+            &pixelBuffer
+        )
+        
+        guard status == kCVReturnSuccess, let buffer = pixelBuffer else {
+            return nil
+        }
+        
+        CVPixelBufferLockBaseAddress(buffer, CVPixelBufferLockFlags(rawValue: 0))
+        let pixelData = CVPixelBufferGetBaseAddress(buffer)
+        
+        let rgbColorSpace = CGColorSpaceCreateDeviceRGB()
+        let context = CGContext(
+            data: pixelData,
+            width: Int(size.width),
+            height: Int(size.height),
+            bitsPerComponent: 8,
+            bytesPerRow: CVPixelBufferGetBytesPerRow(buffer),
+            space: rgbColorSpace,
+            bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue
+        )
+        
+        context?.draw(cgImage, in: CGRect(origin: .zero, size: size))
+        CVPixelBufferUnlockBaseAddress(buffer, CVPixelBufferLockFlags(rawValue: 0))
+        
+        return buffer
+    }
+    
+    private func playVideoContent(at url: URL) {
+        guard let player = streamingPlayer else { return }
+        
+        currentItem = AVPlayerItem(url: url)
+        player.replaceCurrentItem(with: currentItem)
+        
+        // Enable AirPlay for macOS
+        player.allowsExternalPlayback = true
+        
+        // Start playback
+        player.play()
+        
+        print("[AirPlay] Started playback for AirPlay streaming")
+    }
+    
     func updateStream(with imageData: Data) {
-        guard isStreaming, let device = selectedDevice else { return }
+        guard isStreaming else { return }
         
         currentImageData = imageData
         
         if let image = NSImage(data: imageData) {
-            streamImageToAppleTV(image: image, device: device)
+            createStreamingContent(from: image)
         }
     }
     
     func stopStreaming() {
         isStreaming = false
         currentImageData = nil
-        print("[AirPlay] Stopped streaming to Apple TV")
+        
+        // Stop the current player
+        streamingPlayer?.pause()
+        streamingPlayer?.replaceCurrentItem(with: nil)
+        
+        // Clean up temporary files
+        cleanupTemporaryFiles()
+        
+        print("[AirPlay] Stopped streaming to AirPlay device")
     }
     
-    private func streamImageToAppleTV(image: NSImage, device: AirPlayDevice) {
-        // This is where the actual AirPlay magic would happen
-        // For now, we'll use a simple approach with AVPlayerLayer or similar
-        
-        print("[AirPlay] Streaming frame to \(device.name) - Image size: \(image.size)")
-        
-        // In a real implementation, you would:
-        // 1. Create an AVPlayerLayer or similar
-        // 2. Use AVRoutePickerView for device selection
-        // 3. Stream the image data to the selected AirPlay device
-        
-        // Placeholder implementation
-        DispatchQueue.global(qos: .userInitiated).async {
-            // Simulate streaming
-            print("[AirPlay] Frame sent to Apple TV")
+    private func cleanupTemporaryFiles() {
+        // Remove temporary video files
+        let tempDir = FileManager.default.temporaryDirectory
+        do {
+            let tempFiles = try FileManager.default.contentsOfDirectory(at: tempDir, includingPropertiesForKeys: nil)
+            for file in tempFiles {
+                if file.lastPathComponent.hasPrefix("airplay_frame_") {
+                    try FileManager.default.removeItem(at: file)
+                }
+            }
+        } catch {
+            print("[AirPlay] Error cleaning temporary files: \(error)")
         }
     }
     
