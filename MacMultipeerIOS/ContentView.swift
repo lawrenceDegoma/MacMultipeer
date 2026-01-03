@@ -3,8 +3,29 @@ import MultipeerConnectivity
 
 struct ContentView: View {
     @StateObject private var manager = MultipeerManager()
+    @State private var hasInitialized = false
 
     var body: some View {
+        if hasInitialized {
+            mainContent
+        } else {
+            // Show a simple loading view first to get UI on screen quickly
+            VStack {
+                Text("MacMultipeer")
+                    .font(.title)
+                ProgressView()
+                    .padding()
+            }
+            .onAppear {
+                // Initialize after a brief delay to get UI responsive first
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    hasInitialized = true
+                }
+            }
+        }
+    }
+    
+    private var mainContent: some View {
         TabView {
             // StreamDeck Control Tab
             StreamDeckControlView(manager: manager)
@@ -25,8 +46,9 @@ struct ContentView: View {
             let val = Bundle.main.object(forInfoDictionaryKey: "NSLocalNetworkUsageDescription") ?? "<missing>"
             print("NSLocalNetworkUsageDescription:", val)
             
-            // Trigger local network permission request
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            // Delay network operations to improve launch time - even longer to reduce LLDB overhead
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                print("[iOS] Starting delayed network initialization...")
                 manager.toggleAdvertising()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     manager.toggleBrowsing()
@@ -51,13 +73,20 @@ struct ContentView: View {
                     }
                 }
                 
-                // Reset button for debugging
+                // Control buttons for debugging
                 HStack {
                     Button("🔄 Reset Connections") {
                         manager.resetConnection()
                     }
                     .foregroundColor(.orange)
                     
+                    Button("🧹 Cleanup Peers") {
+                        manager.cleanupPeers()
+                    }
+                    .foregroundColor(.purple)
+                }
+                
+                HStack {
                     Button("📤 Send Device Info") {
                         manager.sendDeviceInfo()
                     }

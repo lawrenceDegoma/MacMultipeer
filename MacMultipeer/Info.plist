@@ -4,6 +4,27 @@
 <dict>
 	<key>CFBundleName</key>
 	<string>MacMultipeer</string>
+	
+	<key>CFBundleDisplayName</key>
+	<string>MacMultipeer</string>
+	
+	<key>CFBundleIdentifier</key>
+	<string>com.example.MacMultipeer</string>
+	
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	
+	<key>CFBundleVersion</key>
+	<string>1.0</string>
+	
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	
+	<key>LSMinimumSystemVersion</key>
+	<string>12.0</string>
 
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Discover and connect to nearby devices for local screen sharing.</string>
@@ -14,9 +35,33 @@
 	</array>
 
 	<key>NSCameraUsageDescription</key>
-	<string>Required for screen capture plumbing to access display content.</string>
+	<string>MacMultipeer needs camera access for screen capture functionality to work properly with display content.</string>
 
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Optional: enable microphone capture for audio sharing.</string>
+	<string>MacMultipeer needs microphone access to capture and share system audio during screen sharing sessions.</string>
+	
+	<key>NSSystemExtensionUsageDescription</key>
+	<string>MacMultipeer requires system extensions for advanced screen recording capabilities.</string>
+	
+	<key>NSAppleEventsUsageDescription</key>
+	<string>MacMultipeer needs to send Apple Events to control screen recording and system audio capture.</string>
+	
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>MacMultipeer may need access to save screen recordings or temporary files.</string>
+	
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>MacMultipeer may need access to save screen recordings or temporary files.</string>
+	
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
+	
+	<key>LSUIElement</key>
+	<false/>
+	
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
 </dict>
 </plist>

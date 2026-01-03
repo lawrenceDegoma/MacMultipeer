@@ -21,6 +21,23 @@ struct StreamDeckControlView: View {
                 
                 Spacer()
                 
+                // Mac Sending Control
+                if manager.captureSender == nil {
+                    Button("Start Mac Sending") {
+                        manager.startSending()
+                    }
+                    .foregroundColor(.blue)
+                } else {
+                    Button("Stop Mac Sending") {
+                        manager.stopSending()
+                        // Reset controller mode when stopping Mac sending
+                        if manager.isController {
+                            manager.isController = false
+                        }
+                    }
+                    .foregroundColor(.red)
+                }
+                
                 Button(manager.isController ? "Controller Mode ✅" : "Enable Controller") {
                     manager.enableControllerMode()
                 }
@@ -151,11 +168,12 @@ struct StreamDeckControlView: View {
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(borderColor(for: peer), lineWidth: isCurrentSender(peer) ? 3 : 1)
+                .stroke(borderColor(for: peer), lineWidth: isCurrentSender(peer) ? 4 : 2)  // Thicker border for active device
         )
+        .shadow(color: isCurrentSender(peer) ? .red.opacity(0.4) : .clear, radius: 8)  // Glow effect for active device
         .disabled(!manager.isController || peer.state != .connected)
-        .scaleEffect(isCurrentSender(peer) ? 1.05 : 1.0)
-        .animation(.easeInOut(duration: 0.2), value: isCurrentSender(peer))
+        .scaleEffect(isCurrentSender(peer) ? 1.08 : 1.0)  // Slightly larger scale for active device
+        .animation(.easeInOut(duration: 0.3), value: isCurrentSender(peer))  // Smoother animation
     }
     
     private func deviceIcon(for deviceType: DeviceType) -> Text {
@@ -165,15 +183,15 @@ struct StreamDeckControlView: View {
         case .iPhone:
             return Text("📱")
         case .iPad:
-            return Text("📱") // You could use a different icon for iPad
+            return Text("📱") // iPad icon (could use different icon like "💻" or specific iPad emoji if available)
         }
     }
     
     private func backgroundColorForDevice(_ peer: Peer) -> Color {
         if isCurrentSender(peer) {
-            return Color.red.opacity(0.2)
+            return Color.red.opacity(0.3)  // More prominent red for active device
         } else if peer.state == .connected {
-            return Color.blue.opacity(0.1)
+            return Color.blue.opacity(0.15)
         } else {
             return Color.gray.opacity(0.1)
         }
@@ -183,7 +201,7 @@ struct StreamDeckControlView: View {
         if isCurrentSender(peer) {
             return Color.red
         } else if peer.state == .connected {
-            return Color.blue.opacity(0.5)
+            return Color.blue.opacity(0.8)  // More visible border for connected devices
         } else {
             return Color.gray.opacity(0.3)
         }
@@ -210,10 +228,17 @@ struct StreamDeckControlView: View {
     }
     
     private func isCurrentSender(_ peer: Peer) -> Bool {
+        // Check if this peer is the current sender
+        if let currentSender = manager.currentSender {
+            return currentSender.peer.displayName == peer.peer.displayName
+        }
+        
+        // Special case: if this is the Mac itself and it's currently sending
         if peer.peer.displayName == manager.myPeerID.displayName {
             return manager.captureSender != nil
         }
-        return manager.currentSender?.peer.displayName == peer.peer.displayName
+        
+        return false
     }
 }
 

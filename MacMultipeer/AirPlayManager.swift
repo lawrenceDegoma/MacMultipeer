@@ -70,11 +70,12 @@ class AirPlayManager: NSObject, ObservableObject, NetServiceBrowserDelegate {
     override init() {
         super.init()
         setupAirPlay()
-        startDiscovery()
+        // Don't start discovery automatically - let it be triggered when needed
+        print("[AirPlay] AirPlayManager initialized (discovery not started)")
     }
     
     private func setupAirPlay() {
-        // Initialize AirPlay setup
+        // Initialize AirPlay setup without starting discovery
         print("[AirPlay] Setting up AirPlay manager")
     }
     
@@ -84,6 +85,13 @@ class AirPlayManager: NSObject, ObservableObject, NetServiceBrowserDelegate {
         isDiscovering = true
         print("[AirPlay] Starting Apple TV discovery...")
         
+        // Delay the heavy network operations slightly to improve responsiveness
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.setupNetworkDiscovery()
+        }
+    }
+    
+    private func setupNetworkDiscovery() {
         // Setup Bonjour service browser for AirPlay devices
         netServiceBrowser = NetServiceBrowser()
         netServiceBrowser?.delegate = self
@@ -111,7 +119,7 @@ class AirPlayManager: NSObject, ObservableObject, NetServiceBrowserDelegate {
             }
         }
         
-        browser.start(queue: .main)
+        browser.start(queue: .global(qos: .background))
     }
     
     func stopDiscovery() {
@@ -209,6 +217,7 @@ class AirPlayManager: NSObject, ObservableObject, NetServiceBrowserDelegate {
     
     private func setupAirPlayOutput() {
         // Create route picker for AirPlay device selection (macOS version)
+        // Note: This may show system-level cache/permission messages in console (normal)
         routePickerView = AVRoutePickerView()
         
         // Create player for streaming
@@ -217,6 +226,7 @@ class AirPlayManager: NSObject, ObservableObject, NetServiceBrowserDelegate {
         playerLayer?.videoGravity = .resizeAspect
         
         print("[AirPlay] AirPlay output setup completed")
+        print("[AirPlay] Note: System cache/permission messages are normal during AirPlay initialization")
     }
     
     func startStreaming(with imageData: Data) {
@@ -340,18 +350,39 @@ class AirPlayManager: NSObject, ObservableObject, NetServiceBrowserDelegate {
     }
     
     private func playVideoContent(at url: URL) {
-        guard let player = streamingPlayer else { return }
+        guard let player = streamingPlayer else {
+            print("[AirPlay] No streaming player available")
+            return
+        }
+        
+        print("[AirPlay] Playing video content at: \(url)")
         
         currentItem = AVPlayerItem(url: url)
         player.replaceCurrentItem(with: currentItem)
         
-        // Enable AirPlay for macOS
+        // Enable AirPlay for macOS - this is crucial for Apple TV output
         player.allowsExternalPlayback = true
+        
+        #if os(iOS)
+        player.usesExternalPlaybackWhileExternalScreenIsActive = true
+        #endif
+        
+        // Monitor player status
+        currentItem?.addObserver(self, forKeyPath: "status", options: [.new], context: nil)
+        
+        // Add notification observers for AirPlay status
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(playerDidFinishPlaying),
+            name: .AVPlayerItemDidPlayToEndTime,
+            object: currentItem
+        )
         
         // Start playback
         player.play()
         
-        print("[AirPlay] Started playback for AirPlay streaming")
+        print("[AirPlay] Started playback - allowsExternalPlayback: \(player.allowsExternalPlayback)")
+        print("[AirPlay] External playback active: \(player.isExternalPlaybackActive)")
     }
     
     func updateStream(with imageData: Data) {
@@ -470,5 +501,25 @@ extension AirPlayManager: NetServiceDelegate {
     
     func netService(_ service: NetService, didNotResolve errorDict: [String : NSNumber]) {
         print("[AirPlay] Failed to resolve service \(service.name): \(errorDict)")
+    }
+    
+    // MARK: - Player Observation
+    @objc private func playerDidFinishPlaying(_ notification: Notification) {
+        print("[AirPlay] Player finished playing")
+    }
+    
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if keyPath == "status", let playerItem = object as? AVPlayerItem {
+            switch playerItem.status {
+            case .readyToPlay:
+                print("[AirPlay] Player item ready to play")
+            case .failed:
+                print("[AirPlay] Player item failed: \(playerItem.error?.localizedDescription ?? "Unknown error")")
+            case .unknown:
+                print("[AirPlay] Player item status unknown")
+            @unknown default:
+                break
+            }
+        }
     }
 }
