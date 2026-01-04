@@ -73,7 +73,9 @@ class MultipeerManager: NSObject, ObservableObject {
     private var session: MCSession!
 
     // MARK: - Device & Capture
+    #if os(macOS)
     var captureSender: MacCaptureSender?
+    #endif
     var airPlayManager: AirPlayManager = AirPlayManager()
     private var debugFrameCounter: Int = 0
 
@@ -92,8 +94,95 @@ class MultipeerManager: NSObject, ObservableObject {
     // MARK: - Initialization
     override init() {
         super.init()
-        session = MCSession(peer: myPeerId, securityIdentity: nil, encryptionPreference: .required)
+        
+        print("[Multipeer] Initializing MultipeerManager...")
+        print("[Multipeer] My Peer ID: \(myPeerId.displayName)")
+        
+        // Create session with optimized configuration for stability
+        session = MCSession(
+            peer: myPeerId,
+            securityIdentity: nil,
+            encryptionPreference: .optional  // Use optional instead of required for better compatibility
+        )
         session.delegate = self
+        
+        // Add connection monitoring
+        setupConnectionMonitoring()
+        
+        print("[Multipeer] ✅ MultipeerManager initialized successfully")
+    }
+    
+    // MARK: - Connection Monitoring
+    private func setupConnectionMonitoring() {
+        // Monitor session state every 5 seconds
+        Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            self?.checkConnectionHealth()
+        }
+    }
+    
+    private func checkConnectionHealth() {
+        let sessionPeers = session.connectedPeers
+        let managedPeers = peers.filter { $0.state == .connected }
+        
+        if sessionPeers.count != managedPeers.count {
+            print("[Multipeer] ⚠️ Connection mismatch: Session=\(sessionPeers.count), Managed=\(managedPeers.count)")
+            
+            // Sync the peer states
+            for peer in peers {
+                let actuallyConnected = sessionPeers.contains(peer.peer)
+                if peer.state == .connected && !actuallyConnected {
+                    print("[Multipeer] 🔄 Marking \(peer.displayName) as disconnected")
+                    peer.state = .notConnected
+                    peer.deviceInfo = nil
+                } else if peer.state != .connected && actuallyConnected {
+                    print("[Multipeer] 🔄 Marking \(peer.displayName) as connected")
+                    peer.state = .connected
+                }
+            }
+        }
+        
+        if sessionPeers.isEmpty && (isAdvertising || isBrowsing) {
+            print("[Multipeer] 📡 No connections but networking is active")
+        } else if !sessionPeers.isEmpty {
+            print("[Multipeer] 📱 Active connections: \(sessionPeers.map { $0.displayName }.joined(separator: ", "))")
+        }
+    }
+    
+    private func checkConnectionStability() {
+        print("[Multipeer] 🔍 Checking connection stability...")
+        
+        let sessionPeers = session.connectedPeers
+        let managedPeers = peers.filter { $0.state == .connected }
+        
+        // Remove peers that are marked as connected but not in session
+        for peer in managedPeers {
+            if !sessionPeers.contains(peer.peer) {
+                print("[Multipeer] 🧹 Cleaning up stale connection: \(peer.displayName)")
+                peer.state = .notConnected
+                peer.deviceInfo = nil
+                
+                if currentSender?.peer == peer.peer {
+                    currentSender = nil
+                    print("[Multipeer] 🚫 Cleared stale current sender")
+                }
+            }
+        }
+        
+        // Add peers that are in session but not managed properly
+        for sessionPeer in sessionPeers {
+            if !peers.contains(where: { $0.peer == sessionPeer && $0.state == .connected }) {
+                print("[Multipeer] 🔗 Adding missing managed peer: \(sessionPeer.displayName)")
+                if let existingPeer = peers.first(where: { $0.peer == sessionPeer }) {
+                    existingPeer.state = .connected
+                } else {
+                    let newPeer = Peer(peer: sessionPeer)
+                    newPeer.state = .connected
+                    peers.append(newPeer)
+                }
+            }
+        }
+        
+        print("[Multipeer] ✅ Connection stability check complete")
     }
 
     // MARK: - StreamDeck Controller Functions
@@ -255,11 +344,13 @@ class MultipeerManager: NSObject, ObservableObject {
     
     func startSending() {
         // start capture and forward frames via sendFrame closure
+        #if os(macOS)
         guard captureSender == nil else { return }
         captureSender = MacCaptureSender(onFrame: { [weak self] data in
             self?.sendFrame(data)
         })
         captureSender?.start()
+        #endif
         
         // Update current sender tracking
         DispatchQueue.main.async {
@@ -292,63 +383,61 @@ class MultipeerManager: NSObject, ObservableObject {
     // MARK: - Frame Data Transmission
     
     private func sendFrame(_ data: Data) {
-        let peersCount = session.connectedPeers.count
-        guard peersCount > 0 else {
-            // no connected peers, but still forward to Apple TV if laptop is current sender
-            if currentSender?.peer.displayName == myPeerId.displayName {
-                airPlayManager.handleIncomingFrame(data, from: myPeerId.displayName)
-            }
-            return
+        // Always forward to Apple TV if laptop is current sender (prioritize AirPlay streaming)
+        if currentSender?.peer.displayName == myPeerId.displayName {
+            airPlayManager.handleIncomingFrame(data, from: myPeerId.displayName)
         }
         
-        // Double-check connection state before sending and verify each peer individually
+        // Check if we have stable peer connections
         let connectedPeers = session.connectedPeers
         guard !connectedPeers.isEmpty else {
-            // Still forward to Apple TV if laptop is current sender
-            if currentSender?.peer.displayName == myPeerId.displayName {
-                airPlayManager.handleIncomingFrame(data, from: myPeerId.displayName)
-            }
-            return
-        }
-        
-        // Check if session is actually ready for data transmission
-        guard connectedPeers.allSatisfy({ session.connectedPeers.contains($0) }) else {
-            if debugFrameCounter % 50 == 0 {
-                print("[Multipeer] Skipping frame - not all peers are stably connected")
+            // Log less frequently to reduce console spam
+            if debugFrameCounter % 100 == 0 {
+                print("[Frame] No peer connections available")
             }
             debugFrameCounter += 1
             return
         }
         
-        // Forward laptop screen to Apple TV if laptop is the current sender
-        if currentSender?.peer.displayName == myPeerId.displayName {
-            airPlayManager.handleIncomingFrame(data, from: myPeerId.displayName)
-        }
-        
+        // Add connection stability check with timeout
         DispatchQueue.global(qos: .userInitiated).async {
-            // Double-check connection state before sending
-            let actuallyConnectedPeers = connectedPeers.filter { peer in
-                self.session.connectedPeers.contains(peer)
+            // Validate that each peer is actually reachable before sending
+            let stablePeers = connectedPeers.filter { peer in
+                // Check if peer is in our managed peers list and marked as connected
+                if let managedPeer = self.peers.first(where: { $0.peer == peer }) {
+                    return managedPeer.state == .connected
+                }
+                return false
             }
             
-            guard !actuallyConnectedPeers.isEmpty else {
-                if self.debugFrameCounter % 100 == 0 { // Log less frequently
-                    print("[Frame] No connected peers, skipping frame")
+            guard !stablePeers.isEmpty else {
+                if self.debugFrameCounter % 50 == 0 {
+                    print("[Frame] No stable peer connections available")
                 }
                 self.debugFrameCounter += 1
                 return
             }
             
             do {
-                // Use unreliable transmission for frame data to reduce protocol overhead
-                try self.session.send(data, toPeers: actuallyConnectedPeers, with: .unreliable)
-                // Only log occasionally to reduce console spam
-                if self.debugFrameCounter % 10 == 0 {
-                    print("Frame sent via unreliable transport to \(actuallyConnectedPeers.count) peers")
+                // Use reliable transmission for critical frame data to ensure delivery
+                try self.session.send(data, toPeers: stablePeers, with: .reliable)
+                
+                // Log success less frequently
+                if self.debugFrameCounter % 30 == 0 {
+                    print("[Frame] ✅ Sent to \(stablePeers.count) stable peers (frame #\(self.debugFrameCounter))")
                 }
                 self.debugFrameCounter += 1
             } catch {
-                print("[Multipeer] Failed to send frame to \(actuallyConnectedPeers.count) peers:", error)
+                // Handle specific multipeer errors
+                if (error as NSError).code == 6 { // MCSessionState not connected
+                    print("[Multipeer] ⚠️ Connection dropped while sending frame - will retry")
+                    // Trigger connection stability check
+                    DispatchQueue.main.async {
+                        self.checkConnectionStability()
+                    }
+                } else {
+                    print("[Multipeer] ❌ Failed to send frame: \(error)")
+                }
             }
         }
     }
@@ -595,63 +684,88 @@ extension MultipeerManager: MCNearbyServiceBrowserDelegate {
 extension MultipeerManager: MCSessionDelegate {
     func session(_ session: MCSession, peer peerID: MCPeerID, didChange state: MCSessionState) {
         DispatchQueue.main.async {
-            print("[Multipeer] session: peer=\(peerID.displayName) state=\(state.rawValue)")
+            let stateDescription = self.sessionStateDescription(state)
+            print("[Multipeer] 📱 \(peerID.displayName) → \(stateDescription)")
             
-            // Remove any existing peer with the same display name to avoid duplicates
-            self.peers.removeAll { $0.peer.displayName == peerID.displayName && $0.peer != peerID }
-            
-            // Find or create peer in our list
+            // Update peer state with better state tracking
             if let existingPeer = self.peers.first(where: { $0.peer == peerID }) {
                 existingPeer.state = state
+                print("[Multipeer] Updated existing peer \(peerID.displayName) state to \(stateDescription)")
             } else if state == .connecting || state == .connected {
                 // Add new peer if we don't have it and it's connecting/connected
                 let newPeer = Peer(peer: peerID)
                 newPeer.state = state
                 self.peers.append(newPeer)
-                print("[Multipeer] Added new peer to list: \(peerID.displayName)")
+                print("[Multipeer] ➕ Added new peer: \(peerID.displayName)")
             }
             
-            // Clean up disconnected peers
-            if state == .notConnected {
-                // Reset peer state instead of removing completely
-                if let peer = self.peers.first(where: { $0.peer == peerID }) {
-                    peer.state = .notConnected
-                    peer.deviceInfo = nil
-                    print("[Multipeer] Reset disconnected peer: \(peerID.displayName)")
-                }
-            }
-            
-            print("[Multipeer] connectedPeers count=\(session.connectedPeers.count)")
-            print("[Multipeer] managed peers: \(self.peers.map { "\($0.displayName)(\($0.state.rawValue))" })")
-            
-            if state == .connected {
-                print("[Multipeer] ✅ Successfully connected to \(peerID.displayName)")
-                // Don't auto-stop browsing to allow additional connections
-                // Give connection time to stabilize before broadcasting device info
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    // Check that the peer is still connected and session is stable
+            // Handle state-specific actions
+            switch state {
+            case .connected:
+                print("[Multipeer] ✅ Connected to \(peerID.displayName)")
+                
+                // Delay device info broadcast to allow connection to stabilize
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    // Verify connection is still stable before broadcasting
                     guard session.connectedPeers.contains(peerID) else {
-                        print("[Multipeer] Connection no longer stable, skipping device info broadcast")
+                        print("[Multipeer] ⚠️ Connection to \(peerID.displayName) unstable, skipping broadcast")
                         return
                     }
-                    print("[Multipeer] Connection stable, broadcasting device info")
+                    print("[Multipeer] 📡 Broadcasting device info to stable connection")
                     self.broadcastDeviceInfo()
                 }
-            } else if state == .notConnected {
-                // Clear current sender if it was this peer
-                if self.currentSender?.peer == peerID {
-                    self.currentSender = nil
+                
+            case .connecting:
+                print("[Multipeer] 🔄 Connecting to \(peerID.displayName)...")
+                
+            case .notConnected:
+                print("[Multipeer] ❌ Disconnected from \(peerID.displayName)")
+                
+                // Clear peer data and current sender if it was this peer
+                if let peer = self.peers.first(where: { $0.peer == peerID }) {
+                    peer.deviceInfo = nil
+                    if self.currentSender?.peer == peerID {
+                        self.currentSender = nil
+                        print("[Multipeer] 🚫 Cleared current sender (was \(peerID.displayName))")
+                    }
                 }
-                // If we lost all connections, resume browsing
-                if session.connectedPeers.isEmpty && !self.isBrowsing {
-                    print("[Multipeer] No connected peers, resuming browsing")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        if !self.isBrowsing {
+                
+                // Resume browsing if all connections are lost
+                if session.connectedPeers.isEmpty {
+                    print("[Multipeer] 🔍 No connections remaining, will resume browsing")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        if !self.isBrowsing && session.connectedPeers.isEmpty {
+                            print("[Multipeer] 🔍 Restarting browsing after connection loss")
                             self.startBrowsing()
                         }
                     }
                 }
+                
+            @unknown default:
+                print("[Multipeer] ⚠️ Unknown connection state: \(state.rawValue)")
             }
+            
+            // Summary logging
+            let connectedCount = session.connectedPeers.count
+            let managedCount = self.peers.filter { $0.state == .connected }.count
+            print("[Multipeer] 📊 Session connections: \(connectedCount) | Managed connections: \(managedCount)")
+            
+            // Trigger stability check if there's a mismatch
+            if connectedCount != managedCount {
+                print("[Multipeer] ⚠️ Connection count mismatch detected")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.checkConnectionStability()
+                }
+            }
+        }
+    }
+    
+    private func sessionStateDescription(_ state: MCSessionState) -> String {
+        switch state {
+        case .notConnected: return "Not Connected"
+        case .connecting: return "Connecting"
+        case .connected: return "Connected"
+        @unknown default: return "Unknown(\(state.rawValue))"
         }
     }
 

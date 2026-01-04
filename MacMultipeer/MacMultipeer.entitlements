@@ -28,5 +28,22 @@
 	<true/>
 	<key>com.apple.security.files.downloads.read-write</key>
 	<true/>
+	<key>com.apple.security.device.usb</key>
+	<true/>
+	<key>com.apple.security.device.bluetooth</key>
+	<true/>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<true/>
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+	<key>com.apple.security.device.screen-recording</key>
+	<true/>
+	<key>com.apple.security.temporary-exception.shared-preference.read-write</key>
+	<true/>
+	<key>com.apple.security.temporary-exception.apple-events</key>
+	<array>
+		<string>com.apple.AVKit.RoutePickerViewService</string>
+		<string>com.apple.appleeventsd</string>
+	</array>
 </dict>
 </plist>

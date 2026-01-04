@@ -9,7 +9,7 @@
 	<string>MacMultipeer</string>
 	
 	<key>CFBundleIdentifier</key>
-	<string>com.example.MacMultipeer</string>
+	<string>com.yourcompany.MacMultipeer</string>
 	
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>

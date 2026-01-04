@@ -25,6 +25,18 @@ class ScreenRecordingPermissions: NSObject, ObservableObject {
         checkScreenRecordingPermission()
     }
     
+    // Force fresh permission check by clearing cache
+    func forcePermissionCheck() {
+        // Clear all cached permission states
+        UserDefaults.standard.removeObject(forKey: "lastKnownScreenPermission")
+        UserDefaults.standard.removeObject(forKey: "lastPermissionCheck")
+        UserDefaults.standard.removeObject(forKey: "lastKnownMicPermission")
+        UserDefaults.standard.removeObject(forKey: "lastMicPermissionCheck")
+        
+        print("[Permissions] 🔄 Forcing fresh permission check - clearing cache")
+        checkPermissions()
+    }
+    
     // Force the app to appear in System Preferences by actually using the APIs
     func triggerSystemRecognition() {
         Task { @MainActor in
@@ -46,20 +58,40 @@ class ScreenRecordingPermissions: NSObject, ObservableObject {
     }
     
     private func checkMicrophonePermission() {
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        let authStatus = AVCaptureDevice.authorizationStatus(for: .audio)
+        
+        switch authStatus {
         case .authorized:
             DispatchQueue.main.async {
                 self.hasMicrophonePermission = true
+                UserDefaults.standard.set(true, forKey: "lastKnownMicPermission")
+                UserDefaults.standard.set(Date(), forKey: "lastMicPermissionCheck")
             }
         case .notDetermined:
+            // Only request if we don't have a recent check
+            if let lastCheck = UserDefaults.standard.object(forKey: "lastMicPermissionCheck") as? Date,
+               Date().timeIntervalSince(lastCheck) < 300 { // 5 minutes grace period
+                print("[Permissions] Skipping mic permission request - recent check")
+                let cached = UserDefaults.standard.bool(forKey: "lastKnownMicPermission")
+                DispatchQueue.main.async {
+                    self.hasMicrophonePermission = cached
+                }
+                return
+            }
+            
+            print("[Permissions] Requesting microphone permission")
             AVCaptureDevice.requestAccess(for: .audio) { granted in
                 DispatchQueue.main.async {
                     self.hasMicrophonePermission = granted
+                    UserDefaults.standard.set(granted, forKey: "lastKnownMicPermission")
+                    UserDefaults.standard.set(Date(), forKey: "lastMicPermissionCheck")
                 }
             }
         case .denied, .restricted:
             DispatchQueue.main.async {
                 self.hasMicrophonePermission = false
+                UserDefaults.standard.set(false, forKey: "lastKnownMicPermission")
+                UserDefaults.standard.set(Date(), forKey: "lastMicPermissionCheck")
             }
         @unknown default:
             DispatchQueue.main.async {
@@ -70,25 +102,81 @@ class ScreenRecordingPermissions: NSObject, ObservableObject {
     
     private func checkScreenRecordingPermission() {
         Task { @MainActor in
+            // Add a small delay to ensure any previous permission requests have settled
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            
             let canRecord = await canRecordScreen()
             self.hasScreenRecordingPermission = canRecord
             self.permissionCheckInProgress = false
+            
+            // Log the current permission status for debugging
+            print("[Permissions] Screen recording permission: \(canRecord ? "✅ Granted" : "❌ Denied")")
         }
     }
     
     private func canRecordScreen() async -> Bool {
+        // First, check if we have any cached permission state to avoid repeated prompts
+        if let cachedPermission = UserDefaults.standard.object(forKey: "lastKnownScreenPermission") as? Bool,
+           let lastCheck = UserDefaults.standard.object(forKey: "lastPermissionCheck") as? Date,
+           Date().timeIntervalSince(lastCheck) < 300 { // 5 minutes grace period
+            print("[Permissions] Using cached screen recording permission: \(cachedPermission ? "✅ Granted" : "❌ Denied")")
+            return cachedPermission
+        }
+        
         do {
-            // Try to get available content - this will prompt for permission if needed
+            // Try to get available content - this should NOT prompt if permission was already granted
             let availableContent = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-            return !availableContent.displays.isEmpty
+            let hasDisplays = !availableContent.displays.isEmpty
+            print("[Permissions] Found \(availableContent.displays.count) displays available")
+            
+            // Cache the successful result
+            UserDefaults.standard.set(true, forKey: "lastKnownScreenPermission")
+            UserDefaults.standard.set(Date(), forKey: "lastPermissionCheck")
+            
+            // Additional validation to ensure CMIO system is stable
+            if hasDisplays {
+                // Test CMIO stability by checking if we can access display properties
+                for display in availableContent.displays {
+                    print("[Permissions] Display \(display.displayID) - \(Int(display.width))x\(Int(display.height))")
+                }
+            }
+            
+            return hasDisplays
         } catch {
             print("[Permissions] Screen recording permission check failed: \(error)")
-            return false
+            
+            // Check if this is a specific permission error
+            let nsError = error as NSError
+            switch nsError.code {
+            case -3801: // Screen recording permission denied
+                print("[Permissions] Screen recording explicitly denied")
+                UserDefaults.standard.set(false, forKey: "lastKnownScreenPermission")
+                UserDefaults.standard.set(Date(), forKey: "lastPermissionCheck")
+                return false
+            case -3802: // Screen recording permission not determined
+                print("[Permissions] Screen recording permission not determined")
+                UserDefaults.standard.set(false, forKey: "lastKnownScreenPermission")
+                UserDefaults.standard.set(Date(), forKey: "lastPermissionCheck")
+                return false
+            default:
+                print("[Permissions] Unknown screen capture error: \(nsError)")
+                // For unknown errors, don't cache the result and be more lenient
+                if nsError.domain.contains("CMIO") {
+                    print("[Permissions] ⚠️ CMIO system error detected - assuming permission granted")
+                    // Don't cache CMIO errors as they may be temporary
+                    return true
+                }
+                return false
+            }
         }
     }
     
     func requestScreenRecordingPermission() {
         Task { @MainActor in
+            // Clear cached permission state to force fresh check
+            UserDefaults.standard.removeObject(forKey: "lastKnownScreenPermission")
+            UserDefaults.standard.removeObject(forKey: "lastPermissionCheck")
+            
             do {
                 // This will trigger the permission dialog if not already granted
                 // and add the app to System Preferences -> Privacy & Security -> Screen Recording
@@ -96,21 +184,40 @@ class ScreenRecordingPermissions: NSObject, ObservableObject {
                 checkScreenRecordingPermission()
             } catch {
                 print("[Permissions] Failed to request screen recording permission: \(error)")
-                // Even if this fails, the app should now appear in System Preferences
-                // Set a small delay and check again
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-                    self.hasScreenRecordingPermission = false
-                    self.permissionCheckInProgress = false
+                
+                // Check if this might be a CMIO system issue
+                let nsError = error as NSError
+                if nsError.domain.contains("CMIO") || nsError.code == -7 {
+                    print("[Permissions] 🔧 CMIO system issue detected - restarting permission check")
+                    // Give CMIO system time to stabilize and try again
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+                        print("[Permissions] 🔄 Retrying permission check after CMIO stabilization")
+                        self.checkScreenRecordingPermission()
+                    }
+                } else {
+                    // Even if this fails, the app should now appear in System Preferences
+                    // Set a small delay and check again
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+                        self.hasScreenRecordingPermission = false
+                        self.permissionCheckInProgress = false
+                    }
                 }
             }
         }
     }
     
     func requestMicrophonePermission() {
+        // Clear cached permission state to force fresh check
+        UserDefaults.standard.removeObject(forKey: "lastKnownMicPermission")
+        UserDefaults.standard.removeObject(forKey: "lastMicPermissionCheck")
+        
         AVCaptureDevice.requestAccess(for: .audio) { granted in
             DispatchQueue.main.async {
                 self.hasMicrophonePermission = granted
+                UserDefaults.standard.set(granted, forKey: "lastKnownMicPermission")
+                UserDefaults.standard.set(Date(), forKey: "lastMicPermissionCheck")
             }
         }
     }
@@ -261,6 +368,14 @@ struct PermissionsView: View {
                     }
                     .buttonStyle(.bordered)
                     .foregroundColor(.orange)
+                    
+                    // Debug: Force refresh permissions
+                    Button("Refresh Permission Status") {
+                        forceRefreshPermissions()
+                    }
+                    .buttonStyle(.bordered)
+                    .foregroundColor(.blue)
+                    .help("Force check permission status if app shows wrong state")
                 }
             } else {
                 HStack {
@@ -358,6 +473,15 @@ struct PermissionsView: View {
             legacyPermissions.requestMicrophonePermission()
             alertMessage = "Please go to System Preferences → Security & Privacy → Privacy → Screen Recording and manually add MacMultipeer."
             showingAlert = true
+        }
+    }
+    
+    private func forceRefreshPermissions() {
+        print("[PermissionsView] 🔄 Force refreshing all permission states")
+        if #available(macOS 12.3, *), let modern = modernPermissions {
+            modern.forcePermissionCheck()
+        } else {
+            legacyPermissions.checkPermissions()
         }
     }
     

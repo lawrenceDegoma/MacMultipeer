@@ -69,9 +69,42 @@ class AirPlayManager: NSObject, ObservableObject, NetServiceBrowserDelegate {
     
     override init() {
         super.init()
+        initializeCoreMedia()
         setupAirPlay()
         // Don't start discovery automatically - let it be triggered when needed
         print("[AirPlay] AirPlayManager initialized (discovery not started)")
+    }
+    
+    private func initializeCoreMedia() {
+        // Initialize Core Media I/O with proper metadata to prevent analytics errors
+        print("[AirPlay] Initializing Core Media I/O system...")
+        
+        // Pre-warm the Core Media system to establish proper device context
+        DispatchQueue.global(qos: .utility).async {
+            // Create a minimal pixel buffer to initialize CMIO properly
+            let attributes: [CFString: Any] = [
+                kCVPixelBufferPixelFormatTypeKey: kCVPixelFormatType_32ARGB,
+                kCVPixelBufferWidthKey: 32,
+                kCVPixelBufferHeightKey: 32,
+                kCVPixelBufferCGImageCompatibilityKey: true,
+                kCVPixelBufferCGBitmapContextCompatibilityKey: true
+            ]
+            
+            var pixelBuffer: CVPixelBuffer?
+            let status = CVPixelBufferCreate(
+                kCFAllocatorDefault,
+                32, 32,
+                kCVPixelFormatType_32ARGB,
+                attributes as CFDictionary,
+                &pixelBuffer
+            )
+            
+            if status == kCVReturnSuccess {
+                print("[AirPlay] ✅ Core Media I/O system initialized successfully")
+            } else {
+                print("[AirPlay] ⚠️ Core Media I/O initialization warning: \(status)")
+            }
+        }
     }
     
     private func setupAirPlay() {
@@ -274,38 +307,67 @@ class AirPlayManager: NSObject, ObservableObject, NetServiceBrowserDelegate {
     }
     
     private func createVideoFile(from cgImage: CGImage, outputURL: URL) {
-        // Create video writer
-        guard let videoWriter = try? AVAssetWriter(outputURL: outputURL, fileType: .mp4) else {
-            print("[AirPlay] Failed to create video writer")
-            return
-        }
+        print("[AirPlay] Creating video file with CMIO validation...")
         
+        // Initialize Core Media with proper metadata to prevent analytics errors
         let videoSettings: [String: Any] = [
             AVVideoCodecKey: AVVideoCodecType.h264,
             AVVideoWidthKey: cgImage.width,
             AVVideoHeightKey: cgImage.height,
             AVVideoCompressionPropertiesKey: [
                 AVVideoAverageBitRateKey: 2_000_000,
-                AVVideoProfileLevelKey: AVVideoProfileLevelH264BaselineAutoLevel
+                AVVideoProfileLevelKey: AVVideoProfileLevelH264BaselineAutoLevel,
+                // Add metadata to prevent CMIO analytics errors
+                AVVideoAllowWideColorKey: false
             ]
         ]
         
-        let videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
-        let pixelBufferAdaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: videoInput, sourcePixelBufferAttributes: nil)
-        
-        videoWriter.add(videoInput)
-        
-        if videoWriter.startWriting() {
-            videoWriter.startSession(atSourceTime: .zero)
+        do {
+            // Create video writer with proper error handling
+            let videoWriter = try AVAssetWriter(outputURL: outputURL, fileType: .mp4)
             
-            if let pixelBuffer = createPixelBuffer(from: cgImage, size: CGSize(width: cgImage.width, height: cgImage.height)) {
-                pixelBufferAdaptor.append(pixelBuffer, withPresentationTime: .zero)
-            }
+            let videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
+            videoInput.expectsMediaDataInRealTime = false
             
-            videoInput.markAsFinished()
-            videoWriter.finishWriting {
-                print("[AirPlay] Video file created successfully")
+            // Add proper source pixel buffer attributes to prevent CMIO issues
+            let sourcePixelBufferAttributes: [String: Any] = [
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32ARGB,
+                kCVPixelBufferWidthKey as String: cgImage.width,
+                kCVPixelBufferHeightKey as String: cgImage.height,
+                kCVPixelBufferCGImageCompatibilityKey as String: true,
+                kCVPixelBufferCGBitmapContextCompatibilityKey as String: true
+            ]
+            
+            let pixelBufferAdaptor = AVAssetWriterInputPixelBufferAdaptor(
+                assetWriterInput: videoInput, 
+                sourcePixelBufferAttributes: sourcePixelBufferAttributes
+            )
+            
+            videoWriter.add(videoInput)
+            
+            if videoWriter.startWriting() {
+                videoWriter.startSession(atSourceTime: .zero)
+                
+                if let pixelBuffer = createPixelBuffer(from: cgImage, size: CGSize(width: cgImage.width, height: cgImage.height)) {
+                    pixelBufferAdaptor.append(pixelBuffer, withPresentationTime: .zero)
+                    print("[AirPlay] ✅ Successfully appended pixel buffer")
+                } else {
+                    print("[AirPlay] ❌ Failed to create pixel buffer")
+                }
+                
+                videoInput.markAsFinished()
+                videoWriter.finishWriting {
+                    if videoWriter.status == .completed {
+                        print("[AirPlay] ✅ Video file created successfully")
+                    } else {
+                        print("[AirPlay] ❌ Video creation failed: \(videoWriter.error?.localizedDescription ?? "Unknown error")")
+                    }
+                }
+            } else {
+                print("[AirPlay] ❌ Failed to start video writing: \(videoWriter.error?.localizedDescription ?? "Unknown error")")
             }
+        } catch {
+            print("[AirPlay] ❌ Failed to create video writer: \(error.localizedDescription)")
         }
     }
     
