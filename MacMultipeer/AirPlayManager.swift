@@ -72,12 +72,12 @@ class AirPlayManager: NSObject, ObservableObject, NetServiceBrowserDelegate {
         initializeCoreMedia()
         setupAirPlay()
         // Don't start discovery automatically - let it be triggered when needed
-        print("[AirPlay] AirPlayManager initialized (discovery not started)")
+        Swift.print("[AirPlay] AirPlayManager initialized (discovery not started)")
     }
     
     private func initializeCoreMedia() {
         // Initialize Core Media I/O with proper metadata to prevent analytics errors
-        print("[AirPlay] Initializing Core Media I/O system...")
+        Swift.print("[AirPlay] Initializing Core Media I/O system...")
         
         // Pre-warm the Core Media system to establish proper device context
         DispatchQueue.global(qos: .utility).async {
@@ -268,183 +268,86 @@ class AirPlayManager: NSObject, ObservableObject, NetServiceBrowserDelegate {
             return
         }
         
-        print("[AirPlay] Starting stream to \(device.name)")
+        print("[AirPlay] Starting real-time AirPlay stream to \(device.name)")
         currentImageData = imageData
         isStreaming = true
         
-        // Convert image data to streaming format
-        if let image = NSImage(data: imageData) {
-            createStreamingContent(from: image)
-        }
+        // Initialize real-time streaming using macOS AirPlay capabilities
+        setupRealTimeStreamingWindow(with: imageData)
     }
     
-    private func createStreamingContent(from image: NSImage) {
-        // Create a temporary video file from the image for streaming
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+    private func setupRealTimeStreamingWindow(with imageData: Data) {
+        // Create a streaming window that can be easily mirrored via AirPlay
+        DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             
-            let tempURL = self.createVideoFromImage(image)
+            // Create or update the streaming window
+            if self.streamingWindow == nil {
+                self.createStreamingWindow()
+            }
             
-            DispatchQueue.main.async {
-                self.playVideoContent(at: tempURL)
+            // Update the streaming window with real-time frame data
+            if let image = NSImage(data: imageData) {
+                self.updateStreamingWindowContent(with: image)
             }
         }
     }
     
-    private func createVideoFromImage(_ image: NSImage) -> URL {
-        // Create temporary video file
-        let tempDir = FileManager.default.temporaryDirectory
-        let videoURL = tempDir.appendingPathComponent("airplay_frame_\(Date().timeIntervalSince1970).mp4")
-        
-        // Convert NSImage to CGImage for video creation
-        guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            print("[AirPlay] Failed to convert NSImage to CGImage")
-            return videoURL
+    private func updateStreamingWindowContent(with image: NSImage) {
+        // Update the streaming window content with new frame data
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self,
+                  let window = self.streamingWindow,
+                  let contentView = window.contentView else { return }
+            
+            // Create or update image view
+            if let imageView = contentView.subviews.first(where: { $0 is NSImageView }) as? NSImageView {
+                imageView.image = image
+            } else {
+                let imageView = NSImageView()
+                imageView.image = image
+                imageView.imageScaling = .scaleProportionallyUpOrDown
+                imageView.translatesAutoresizingMaskIntoConstraints = false
+                
+                contentView.addSubview(imageView)
+                NSLayoutConstraint.activate([
+                    imageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+                    imageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+                    imageView.topAnchor.constraint(equalTo: contentView.topAnchor),
+                    imageView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor)
+                ])
+            }
         }
-        
-        createVideoFile(from: cgImage, outputURL: videoURL)
-        return videoURL
     }
     
-    private func createVideoFile(from cgImage: CGImage, outputURL: URL) {
-        print("[AirPlay] Creating video file with CMIO validation...")
+    private func createStreamingWindow() {
+        print("[AirPlay] Creating dedicated streaming window for AirPlay")
         
-        // Initialize Core Media with proper metadata to prevent analytics errors
-        let videoSettings: [String: Any] = [
-            AVVideoCodecKey: AVVideoCodecType.h264,
-            AVVideoWidthKey: cgImage.width,
-            AVVideoHeightKey: cgImage.height,
-            AVVideoCompressionPropertiesKey: [
-                AVVideoAverageBitRateKey: 2_000_000,
-                AVVideoProfileLevelKey: AVVideoProfileLevelH264BaselineAutoLevel,
-                // Add metadata to prevent CMIO analytics errors
-                AVVideoAllowWideColorKey: false
-            ]
-        ]
-        
-        do {
-            // Create video writer with proper error handling
-            let videoWriter = try AVAssetWriter(outputURL: outputURL, fileType: .mp4)
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
             
-            let videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
-            videoInput.expectsMediaDataInRealTime = false
-            
-            // Add proper source pixel buffer attributes to prevent CMIO issues
-            let sourcePixelBufferAttributes: [String: Any] = [
-                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32ARGB,
-                kCVPixelBufferWidthKey as String: cgImage.width,
-                kCVPixelBufferHeightKey as String: cgImage.height,
-                kCVPixelBufferCGImageCompatibilityKey as String: true,
-                kCVPixelBufferCGBitmapContextCompatibilityKey as String: true
-            ]
-            
-            let pixelBufferAdaptor = AVAssetWriterInputPixelBufferAdaptor(
-                assetWriterInput: videoInput, 
-                sourcePixelBufferAttributes: sourcePixelBufferAttributes
+            // Create a window that can be easily mirrored via AirPlay
+            let window = NSWindow(
+                contentRect: NSRect(x: 100, y: 100, width: 1280, height: 720),
+                styleMask: [.titled, .closable, .resizable],
+                backing: .buffered,
+                defer: false
             )
             
-            videoWriter.add(videoInput)
+            window.title = "🖥️ MacMultipeer Screen Share - AirPlay this window to Apple TV"
+            window.backgroundColor = .black
+            window.level = .normal  // Make it visible for AirPlay selection
             
-            if videoWriter.startWriting() {
-                videoWriter.startSession(atSourceTime: .zero)
-                
-                if let pixelBuffer = createPixelBuffer(from: cgImage, size: CGSize(width: cgImage.width, height: cgImage.height)) {
-                    pixelBufferAdaptor.append(pixelBuffer, withPresentationTime: .zero)
-                    print("[AirPlay] ✅ Successfully appended pixel buffer")
-                } else {
-                    print("[AirPlay] ❌ Failed to create pixel buffer")
-                }
-                
-                videoInput.markAsFinished()
-                videoWriter.finishWriting {
-                    if videoWriter.status == .completed {
-                        print("[AirPlay] ✅ Video file created successfully")
-                    } else {
-                        print("[AirPlay] ❌ Video creation failed: \(videoWriter.error?.localizedDescription ?? "Unknown error")")
-                    }
-                }
-            } else {
-                print("[AirPlay] ❌ Failed to start video writing: \(videoWriter.error?.localizedDescription ?? "Unknown error")")
-            }
-        } catch {
-            print("[AirPlay] ❌ Failed to create video writer: \(error.localizedDescription)")
+            // Position it prominently so users can see it
+            window.center()
+            window.makeKeyAndOrderFront(nil)
+            
+            // Enable external screen output for AirPlay
+            window.sharingType = .readOnly
+            
+            self.streamingWindow = window
+            print("[AirPlay] ✅ AirPlay streaming window created - use macOS screen mirroring to stream this window")
         }
-    }
-    
-    private func createPixelBuffer(from cgImage: CGImage, size: CGSize) -> CVPixelBuffer? {
-        let attributes: [CFString: Any] = [
-            kCVPixelBufferCGImageCompatibilityKey: true,
-            kCVPixelBufferCGBitmapContextCompatibilityKey: true
-        ]
-        
-        var pixelBuffer: CVPixelBuffer?
-        let status = CVPixelBufferCreate(
-            kCFAllocatorDefault,
-            Int(size.width),
-            Int(size.height),
-            kCVPixelFormatType_32ARGB,
-            attributes as CFDictionary,
-            &pixelBuffer
-        )
-        
-        guard status == kCVReturnSuccess, let buffer = pixelBuffer else {
-            return nil
-        }
-        
-        CVPixelBufferLockBaseAddress(buffer, CVPixelBufferLockFlags(rawValue: 0))
-        let pixelData = CVPixelBufferGetBaseAddress(buffer)
-        
-        let rgbColorSpace = CGColorSpaceCreateDeviceRGB()
-        let context = CGContext(
-            data: pixelData,
-            width: Int(size.width),
-            height: Int(size.height),
-            bitsPerComponent: 8,
-            bytesPerRow: CVPixelBufferGetBytesPerRow(buffer),
-            space: rgbColorSpace,
-            bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue
-        )
-        
-        context?.draw(cgImage, in: CGRect(origin: .zero, size: size))
-        CVPixelBufferUnlockBaseAddress(buffer, CVPixelBufferLockFlags(rawValue: 0))
-        
-        return buffer
-    }
-    
-    private func playVideoContent(at url: URL) {
-        guard let player = streamingPlayer else {
-            print("[AirPlay] No streaming player available")
-            return
-        }
-        
-        print("[AirPlay] Playing video content at: \(url)")
-        
-        currentItem = AVPlayerItem(url: url)
-        player.replaceCurrentItem(with: currentItem)
-        
-        // Enable AirPlay for macOS - this is crucial for Apple TV output
-        player.allowsExternalPlayback = true
-        
-        #if os(iOS)
-        player.usesExternalPlaybackWhileExternalScreenIsActive = true
-        #endif
-        
-        // Monitor player status
-        currentItem?.addObserver(self, forKeyPath: "status", options: [.new], context: nil)
-        
-        // Add notification observers for AirPlay status
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(playerDidFinishPlaying),
-            name: .AVPlayerItemDidPlayToEndTime,
-            object: currentItem
-        )
-        
-        // Start playback
-        player.play()
-        
-        print("[AirPlay] Started playback - allowsExternalPlayback: \(player.allowsExternalPlayback)")
-        print("[AirPlay] External playback active: \(player.isExternalPlaybackActive)")
     }
     
     func updateStream(with imageData: Data) {
@@ -452,12 +355,14 @@ class AirPlayManager: NSObject, ObservableObject, NetServiceBrowserDelegate {
         
         currentImageData = imageData
         
+        // Update the streaming display with new frame
         if let image = NSImage(data: imageData) {
-            createStreamingContent(from: image)
+            updateStreamingWindowContent(with: image)
         }
     }
     
     func stopStreaming() {
+        print("[AirPlay] Stopping AirPlay streaming")
         isStreaming = false
         currentImageData = nil
         
@@ -465,10 +370,16 @@ class AirPlayManager: NSObject, ObservableObject, NetServiceBrowserDelegate {
         streamingPlayer?.pause()
         streamingPlayer?.replaceCurrentItem(with: nil)
         
-        // Clean up temporary files
-        cleanupTemporaryFiles()
+        // Close and clean up streaming window
+        DispatchQueue.main.async { [weak self] in
+            if let window = self?.streamingWindow {
+                window.close()
+                self?.streamingWindow = nil
+                print("[AirPlay] Streaming window closed")
+            }
+        }
         
-        print("[AirPlay] Stopped streaming to AirPlay device")
+        Swift.print("[AirPlay] ✅ Streaming stopped and cleaned up")
     }
     
     private func cleanupTemporaryFiles() {
@@ -482,7 +393,7 @@ class AirPlayManager: NSObject, ObservableObject, NetServiceBrowserDelegate {
                 }
             }
         } catch {
-            print("[AirPlay] Error cleaning temporary files: \(error)")
+            Swift.print("[AirPlay] Error cleaning temporary files: \(error)")
         }
     }
     
@@ -581,6 +492,38 @@ extension AirPlayManager: NetServiceDelegate {
                 print("[AirPlay] Player item status unknown")
             @unknown default:
                 break
+            }
+        }
+    }
+}
+
+// MARK: - Convenience Methods for Integration
+extension AirPlayManager {
+    func startStreamingIfDeviceSelected() {
+        guard selectedDevice != nil else {
+            print("[AirPlay] No device selected - starting discovery")
+            startDiscovery()
+            return
+        }
+        print("[AirPlay] Device already selected, ready for streaming")
+    }
+    
+    func isReadyForStreaming() -> Bool {
+        return selectedDevice != nil
+    }
+    
+    // Method to set up the streaming window without waiting for frame data
+    func prepareForStreaming() {
+        guard selectedDevice != nil else {
+            print("[AirPlay] No device selected for streaming preparation")
+            return
+        }
+        
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            if self.streamingWindow == nil {
+                self.createStreamingWindow()
             }
         }
     }

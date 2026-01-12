@@ -200,7 +200,7 @@ struct ContentView: View {
                 
                 // Screen Capture + AirPlay Controls
                 HStack(spacing: 12) {
-                    if manager.captureSender == nil {
+                    if !manager.isCaptureSenderActive {
                         Button("Start Screen Sharing to AirPlay") {
                             manager.startSending()
                         }

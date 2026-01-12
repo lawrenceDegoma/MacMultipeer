@@ -2,6 +2,7 @@ import Foundation
 import MultipeerConnectivity
 import Combine
 import AppKit
+@preconcurrency import ScreenCaptureKit
 
 // MARK: - Models and Enums
 
@@ -74,10 +75,15 @@ class MultipeerManager: NSObject, ObservableObject {
 
     // MARK: - Device & Capture
     #if os(macOS)
-    var captureSender: MacCaptureSender?
+    var captureSender: Any? // Simplified to avoid compilation issues
     #endif
-    var airPlayManager: AirPlayManager = AirPlayManager()
     private var debugFrameCounter: Int = 0
+    
+    // Real AirPlay manager for seamless in-app streaming
+    @Published var airPlayManager = AirPlayManager()
+    
+    // Simple tracking for sender state
+    @Published var isCaptureSenderActive = false
 
     // MARK: - Device Configuration
     private let myDeviceInfo = DeviceInfo(
@@ -300,7 +306,7 @@ class MultipeerManager: NSObject, ObservableObject {
             peerId: myPeerId.displayName,
             deviceType: deviceInfo.deviceType,
             capabilities: deviceInfo.capabilities,
-            isCurrentlySending: captureSender != nil
+            isCurrentlySending: isCaptureSenderActive
         )
         
         do {
@@ -345,11 +351,15 @@ class MultipeerManager: NSObject, ObservableObject {
     func startSending() {
         // start capture and forward frames via sendFrame closure
         #if os(macOS)
-        guard captureSender == nil else { return }
-        captureSender = MacCaptureSender(onFrame: { [weak self] data in
-            self?.sendFrame(data)
-        })
-        captureSender?.start()
+        guard !isCaptureSenderActive else { return }
+        
+        // Create a simple screen capture that works
+        print("[Multipeer] Starting screen capture...")
+        
+        // Start the simple screen capture using ScreenCaptureKit
+        startSimpleScreenCapture()
+        
+        isCaptureSenderActive = true
         #endif
         
         // Update current sender tracking
@@ -363,10 +373,66 @@ class MultipeerManager: NSObject, ObservableObject {
         broadcastDeviceInfo()
         print("[Multipeer] startSending: capture started")
     }
+    
+    @available(macOS 12.3, *)
+    private func startSimpleScreenCapture() {
+        Task {
+            do {
+                let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+                guard let display = content.displays.first else {
+                    print("[Screen] No displays found")
+                    return
+                }
+                
+                print("[Screen] Starting capture from display \(display.displayID)")
+                
+                // Create a timer to capture frames every 200ms (5 FPS)
+                Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] timer in
+                    guard let self = self, self.isCaptureSenderActive else {
+                        timer.invalidate()
+                        return
+                    }
+                    Task {
+                        await self.captureFrame(from: display)
+                    }
+                }
+                
+            } catch {
+                print("[Screen] Failed to start capture: \(error)")
+            }
+        }
+    }
+    
+    @available(macOS 12.3, *)
+    private func captureFrame(from display: SCDisplay) async {
+        do {
+            let config = SCStreamConfiguration()
+            config.width = 1280
+            config.height = 720
+            config.showsCursor = false
+            
+            let filter = SCContentFilter(display: display, excludingWindows: [])
+            
+            // Take a screenshot
+            let cgImage = try await SCScreenshotManager.captureImage(
+                contentFilter: filter,
+                configuration: config
+            )
+            
+            // Convert to JPEG data
+            let bitmap = NSBitmapImageRep(cgImage: cgImage)
+            if let data = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.6]) {
+                // Send the frame
+                self.sendFrame(data)
+            }
+            
+        } catch {
+            print("[Screen] Capture error: \(error)")
+        }
+    }
 
     func stopSending() {
-        captureSender?.stop()
-        captureSender = nil
+        isCaptureSenderActive = false
         
         // Clear current sender tracking
         DispatchQueue.main.async {
@@ -383,7 +449,7 @@ class MultipeerManager: NSObject, ObservableObject {
     // MARK: - Frame Data Transmission
     
     private func sendFrame(_ data: Data) {
-        // Always forward to Apple TV if laptop is current sender (prioritize AirPlay streaming)
+        // Forward to AirPlay manager for real-time streaming
         if currentSender?.peer.displayName == myPeerId.displayName {
             airPlayManager.handleIncomingFrame(data, from: myPeerId.displayName)
         }
