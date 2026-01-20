@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.macmultipeer.refresh</string>
+	</array>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_screenshare._tcp</string>
@@ -11,11 +15,5 @@
 		<string>background-processing</string>
 		<string>network-service</string>
 	</array>
-	<key>BGTaskSchedulerPermittedIdentifiers</key>
-	<array>
-		<string>com.macmultipeer.refresh</string>
-	</array>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>This app uses the local network to discover and connect with nearby devices for screen sharing.</string>
 </dict>
 </plist>

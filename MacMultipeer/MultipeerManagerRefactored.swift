@@ -112,8 +112,13 @@ class MultipeerManagerRefactored: NSObject, ObservableObject {
     
     // Screen Capture
     func startSending() {
-        guard captureSender == nil else { return }
+        print("[REFACTORED] 🚀 startSending called")
+        guard captureSender == nil else { 
+            print("[REFACTORED] ❌ startSending: already has captureSender")
+            return 
+        }
         
+        print("[REFACTORED] 📹 Creating new captureSender")
         captureSender = MacCaptureSender(onFrame: { [weak self] data in
             self?.sendFrame(data)
         })
@@ -121,14 +126,18 @@ class MultipeerManagerRefactored: NSObject, ObservableObject {
         
         // Update current sender tracking
         DispatchQueue.main.async {
+            print("[REFACTORED] 🔄 Setting currentSender on main thread")
             if let myPeer = self.deviceManager.getMyPeerAsDevice() {
                 self.deviceManager.setCurrentSender(myPeer)
+                print("[REFACTORED] ✅ Set currentSender to: \(myPeer.peer.displayName)")
+            } else {
+                print("[REFACTORED] ❌ Failed to get myPeerAsDevice")
             }
         }
         
         // Broadcast updated device info
         broadcastDeviceInfo()
-        print("[Manager] startSending: capture started")
+        print("[REFACTORED] ✅ startSending: capture started")
     }
     
     func stopSending() {
@@ -148,9 +157,16 @@ class MultipeerManagerRefactored: NSObject, ObservableObject {
     }
     
     private func sendFrame(_ data: Data) {
+        print("[REFACTORED] 📺 sendFrame called with \(data.count) bytes")
+        print("[REFACTORED] currentSender: \(deviceManager.currentSender?.peer.displayName ?? "nil")")
+        print("[REFACTORED] myPeerId: \(myPeerId.displayName)")
+        
         // Forward to Apple TV if laptop is current sender
         if deviceManager.currentSender?.peer.displayName == myPeerId.displayName {
+            print("[REFACTORED] ✅ Forwarding to AirPlay manager")
             airPlayManager.handleIncomingFrame(data, from: myPeerId.displayName)
+        } else {
+            print("[REFACTORED] ❌ NOT forwarding to AirPlay - currentSender mismatch")
         }
         
         // Send to connected peers

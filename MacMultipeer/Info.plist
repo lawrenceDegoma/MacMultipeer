@@ -46,6 +46,9 @@
 	<key>NSAppleEventsUsageDescription</key>
 	<string>MacMultipeer needs to send Apple Events to control screen recording and system audio capture.</string>
 	
+	<key>NSScreenCaptureUsageDescription</key>
+	<string>MacMultipeer needs screen recording access to capture and share your screen with other devices.</string>
+	
 	<key>NSDesktopFolderUsageDescription</key>
 	<string>MacMultipeer may need access to save screen recordings or temporary files.</string>
 	

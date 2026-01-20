@@ -199,8 +199,7 @@ struct ContentView: View {
                 }
                 
                 // Screen Capture + AirPlay Controls
-                HStack(spacing: 12) {
-                    if !manager.isCaptureSenderActive {
+                HStack(spacing: 12) {                    if !manager.isCaptureSenderActive {
                         Button("Start Screen Sharing to AirPlay") {
                             manager.startSending()
                         }
@@ -211,6 +210,12 @@ struct ContentView: View {
                         }
                         .buttonStyle(.bordered)
                     }
+                    
+                    // Debug test button
+                    Button("🧪 Test AirPlay Window") {
+                        manager.airPlayManager.forceCreateStreamingWindow()
+                    }
+                    .buttonStyle(.bordered)
                 }
                 
                 // Available Apple TVs

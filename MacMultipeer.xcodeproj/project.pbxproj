@@ -606,6 +606,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MacMultipeer/MacMultipeer.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -626,6 +627,9 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = Yes;
+				"INFOPLIST_KEY_NSMicrophoneUsageDescription[sdk=macosx*]" = "MacMultipeer needs microphone access to capture and share system audio during screen sharing sessions.";
+				"INFOPLIST_KEY_NSCameraUsageDescription[sdk=macosx*]" = "MacMultipeer needs camera access for screen capture functionality to work properly with display content.";
+				"INFOPLIST_KEY_NSScreenCaptureUsageDescription[sdk=macosx*]" = "MacMultipeer needs screen recording access to capture and share your screen with other devices.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -662,6 +666,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MacMultipeer/MacMultipeer.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -682,6 +687,9 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = Yes;
+				"INFOPLIST_KEY_NSMicrophoneUsageDescription[sdk=macosx*]" = "MacMultipeer needs microphone access to capture and share system audio during screen sharing sessions.";
+				"INFOPLIST_KEY_NSCameraUsageDescription[sdk=macosx*]" = "MacMultipeer needs camera access for screen capture functionality to work properly with display content.";
+				"INFOPLIST_KEY_NSScreenCaptureUsageDescription[sdk=macosx*]" = "MacMultipeer needs screen recording access to capture and share your screen with other devices.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -826,7 +834,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MacMultipeerIOS/Info.plist;
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "This app uses local networking to discover and connect to other devices for screen mirroring and control.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "This app uses the local network to discover and connect with nearby devices for screen sharing.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -864,7 +872,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MacMultipeerIOS/Info.plist;
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "This app uses local networking to discover and connect to other devices for screen mirroring and control.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "This app uses the local network to discover and connect with nearby devices for screen sharing.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

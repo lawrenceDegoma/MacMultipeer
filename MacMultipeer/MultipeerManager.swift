@@ -37,13 +37,13 @@ struct ControlMessage: Codable {
     let sourceInfo: DeviceInfo
 }
 
-class Peer: Identifiable {
+class Peer: Identifiable, ObservableObject {
     let id = UUID()
     let peer: MCPeerID
     var displayName: String { peer.displayName }
-    var state: MCSessionState = .notConnected
-    var deviceInfo: DeviceInfo?
-    var isCurrentlySending: Bool = false
+    @Published var state: MCSessionState = .notConnected
+    @Published var deviceInfo: DeviceInfo?
+    @Published var isCurrentlySending: Bool = false
 
     init(peer: MCPeerID) { 
         self.peer = peer 
@@ -119,6 +119,14 @@ class MultipeerManager: NSObject, ObservableObject {
     }
     
     // MARK: - Connection Monitoring
+    
+    private func triggerUIUpdate() {
+        // Force SwiftUI to update by triggering the @Published peers array
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+        }
+    }
+    
     private func setupConnectionMonitoring() {
         // Monitor session state every 5 seconds
         Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
@@ -140,9 +148,11 @@ class MultipeerManager: NSObject, ObservableObject {
                     print("[Multipeer] 🔄 Marking \(peer.displayName) as disconnected")
                     peer.state = .notConnected
                     peer.deviceInfo = nil
+                    triggerUIUpdate()
                 } else if peer.state != .connected && actuallyConnected {
                     print("[Multipeer] 🔄 Marking \(peer.displayName) as connected")
                     peer.state = .connected
+                    triggerUIUpdate()
                 }
             }
         }
@@ -166,6 +176,7 @@ class MultipeerManager: NSObject, ObservableObject {
                 print("[Multipeer] 🧹 Cleaning up stale connection: \(peer.displayName)")
                 peer.state = .notConnected
                 peer.deviceInfo = nil
+                triggerUIUpdate()
                 
                 if currentSender?.peer == peer.peer {
                     currentSender = nil
@@ -180,10 +191,12 @@ class MultipeerManager: NSObject, ObservableObject {
                 print("[Multipeer] 🔗 Adding missing managed peer: \(sessionPeer.displayName)")
                 if let existingPeer = peers.first(where: { $0.peer == sessionPeer }) {
                     existingPeer.state = .connected
+                    triggerUIUpdate()
                 } else {
                     let newPeer = Peer(peer: sessionPeer)
                     newPeer.state = .connected
                     peers.append(newPeer)
+                    triggerUIUpdate()
                 }
             }
         }
@@ -351,21 +364,30 @@ class MultipeerManager: NSObject, ObservableObject {
     func startSending() {
         // start capture and forward frames via sendFrame closure
         #if os(macOS)
-        guard !isCaptureSenderActive else { return }
+        print("🚀🚀🚀 MAIN startSending called - isCaptureSenderActive: \(isCaptureSenderActive)")
+        
+        guard !isCaptureSenderActive else { 
+            print("🚀🚀🚀 ⚠️ Screen capture already active, skipping")
+            return 
+        }
         
         // Create a simple screen capture that works
-        print("[Multipeer] Starting screen capture...")
+        print("🚀🚀🚀 Starting screen capture...")
         
         // Start the simple screen capture using ScreenCaptureKit
         startSimpleScreenCapture()
         
         isCaptureSenderActive = true
+        print("🚀🚀🚀 ✅ isCaptureSenderActive set to: \(isCaptureSenderActive)")
         #endif
         
         // Update current sender tracking
         DispatchQueue.main.async {
             if let myPeer = self.peers.first(where: { $0.peer.displayName == self.myPeerId.displayName }) {
                 self.currentSender = myPeer
+                print("[Multipeer] ✅ Set currentSender to: \(myPeer.displayName)")
+            } else {
+                print("[Multipeer] ⚠️ Could not find myPeer in peers array")
             }
         }
         
@@ -449,9 +471,16 @@ class MultipeerManager: NSObject, ObservableObject {
     // MARK: - Frame Data Transmission
     
     private func sendFrame(_ data: Data) {
-        // Forward to AirPlay manager for real-time streaming
-        if currentSender?.peer.displayName == myPeerId.displayName {
+        print("🔥🔥🔥 MAIN sendFrame called with \(data.count) bytes")
+        print("🔥🔥🔥 isCaptureSenderActive: \(isCaptureSenderActive)")
+        print("🔥🔥🔥 currentSender: \(currentSender?.displayName ?? "nil")")
+        
+        // Forward to AirPlay manager for real-time streaming when this Mac is sending
+        if isCaptureSenderActive {
+            print("🔥🔥🔥 ✅ FORWARDING to AirPlay manager: \(data.count) bytes")
             airPlayManager.handleIncomingFrame(data, from: myPeerId.displayName)
+        } else {
+            print("🔥🔥🔥 ❌ NOT forwarding frame - isCaptureSenderActive: \(isCaptureSenderActive)")
         }
         
         // Check if we have stable peer connections
@@ -579,6 +608,7 @@ class MultipeerManager: NSObject, ObservableObject {
         
         print("[Multipeer] inviting peer \(peer.displayName)")
         peer.state = .connecting
+        triggerUIUpdate()
         browser.invitePeer(peer.peer, to: session, withContext: nil, timeout: 60) // Increased timeout
     }
     
@@ -756,12 +786,14 @@ extension MultipeerManager: MCSessionDelegate {
             // Update peer state with better state tracking
             if let existingPeer = self.peers.first(where: { $0.peer == peerID }) {
                 existingPeer.state = state
+                self.triggerUIUpdate()
                 print("[Multipeer] Updated existing peer \(peerID.displayName) state to \(stateDescription)")
             } else if state == .connecting || state == .connected {
                 // Add new peer if we don't have it and it's connecting/connected
                 let newPeer = Peer(peer: peerID)
                 newPeer.state = state
                 self.peers.append(newPeer)
+                self.triggerUIUpdate()
                 print("[Multipeer] ➕ Added new peer: \(peerID.displayName)")
             }
             
@@ -790,6 +822,7 @@ extension MultipeerManager: MCSessionDelegate {
                 // Clear peer data and current sender if it was this peer
                 if let peer = self.peers.first(where: { $0.peer == peerID }) {
                     peer.deviceInfo = nil
+                    self.triggerUIUpdate()
                     if self.currentSender?.peer == peerID {
                         self.currentSender = nil
                         print("[Multipeer] 🚫 Cleared current sender (was \(peerID.displayName))")

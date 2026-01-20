@@ -41,13 +41,13 @@ struct ControlMessage: Codable {
     let sourceInfo: DeviceInfo
 }
 
-class Peer: Identifiable {
+class Peer: Identifiable, ObservableObject {
     let id = UUID()
     let peer: MCPeerID
     var displayName: String { peer.displayName }
-    var state: MCSessionState = .notConnected
-    var deviceInfo: DeviceInfo?
-    var isCurrentlySending: Bool = false
+    @Published var state: MCSessionState = .notConnected
+    @Published var deviceInfo: DeviceInfo?
+    @Published var isCurrentlySending: Bool = false
 
     init(peer: MCPeerID) { 
         self.peer = peer 

@@ -528,3 +528,11 @@ extension AirPlayManager {
         }
     }
 }
+
+// MARK: - Debug/Test Methods
+extension AirPlayManager {
+    func forceCreateStreamingWindow() {
+        print("[AirPlay] 🧪 TEST: Force creating streaming window")
+        createStreamingWindow()
+    }
+}
